@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Globe, Heart, DollarSign, Users, BookOpen, MessageCircle } from "lucide-react";
+import { Check, Globe, Heart, DollarSign, Users, BookOpen, MessageCircle, ArrowRight } from "lucide-react";
 
 export const RoleSelection = () => {
   return (
@@ -52,10 +52,12 @@ export const RoleSelection = () => {
               </div>
               
               <div className="pt-4">
-                <Button variant="hero" className="w-full shadow-glow group">
-                  Start as Voyager
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <a href="/guides">
+                  <Button variant="hero" className="w-full shadow-glow group">
+                    Start as Voyager
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -93,10 +95,12 @@ export const RoleSelection = () => {
               </div>
               
               <div className="pt-4">
-                <Button variant="secondary" className="w-full shadow-glow group">
-                  Become a Guide
-                  <DollarSign className="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
-                </Button>
+                <a href="/guides">
+                  <Button variant="secondary" className="w-full shadow-glow group">
+                    Become a Guide
+                    <DollarSign className="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+                  </Button>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -132,6 +136,3 @@ export const RoleSelection = () => {
     </section>
   );
 };
-
-// Missing import
-import { ArrowRight } from "lucide-react";

@@ -16,25 +16,28 @@ export const Header = () => {
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center">
-              <span className="text-white font-bold text-lg">V</span>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center">
+                <span className="text-white font-bold text-lg">V</span>
+              </div>
+              <a 
+                href="/" 
+                className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent hover:scale-105 transition-transform"
+              >
+                Voyageory
+              </a>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Voyageory
-            </span>
-          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth">
-              Features
-            </a>
-            <a href="#community" className="text-muted-foreground hover:text-primary transition-smooth">
+            <a href="/community" className="text-muted-foreground hover:text-primary transition-smooth">
               Community
             </a>
-            <a href="#guides" className="text-muted-foreground hover:text-primary transition-smooth">
-              For Guides
+            <a href="/guides" className="text-muted-foreground hover:text-primary transition-smooth">
+              Find Guides
+            </a>
+            <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth">
+              Features
             </a>
           </nav>
 
@@ -76,14 +79,14 @@ export const Header = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4 animate-slide-up">
             <nav className="flex flex-col space-y-4">
-              <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth py-2">
-                Features
-              </a>
-              <a href="#community" className="text-muted-foreground hover:text-primary transition-smooth py-2">
+              <a href="/community" className="text-muted-foreground hover:text-primary transition-smooth py-2">
                 Community
               </a>
-              <a href="#guides" className="text-muted-foreground hover:text-primary transition-smooth py-2">
-                For Guides
+              <a href="/guides" className="text-muted-foreground hover:text-primary transition-smooth py-2">
+                Find Guides
+              </a>
+              <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth py-2">
+                Features
               </a>
               <div className="pt-4 space-y-3">
                 <Button variant="ghost" className="w-full text-muted-foreground hover:text-primary">

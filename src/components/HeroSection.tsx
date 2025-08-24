@@ -35,10 +35,12 @@ export const HeroSection = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="hero" size="lg" className="shadow-glow group">
-                Start Your Journey
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <a href="/guides">
+                <Button variant="hero" size="lg" className="shadow-glow group">
+                  Start Your Journey
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </a>
               
               <Button variant="outline" size="lg" className="group border-primary/20 hover:border-primary/40">
                 <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
@@ -73,30 +75,30 @@ export const HeroSection = () => {
               />
             </div>
             
-            {/* Floating Elements */}
-            <div className="absolute -top-4 -right-4 bg-card border border-border rounded-xl p-4 shadow-soft animate-float">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center">
-                  <Video className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Live Call</div>
-                  <div className="text-xs text-muted-foreground">Guide Available</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="absolute -bottom-4 -left-4 bg-card border border-border rounded-xl p-4 shadow-soft animate-float" style={{ animationDelay: "1.5s" }}>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <span className="text-secondary font-bold text-sm">98%</span>
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Success Rate</div>
-                  <div className="text-xs text-muted-foreground">Visa Approval</div>
-                </div>
-              </div>
-            </div>
+      {/* Floating Elements with better z-index */}
+      <div className="absolute -top-4 -right-4 bg-card border border-border rounded-xl p-4 shadow-soft animate-float z-20">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center">
+            <Video className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <div className="text-sm font-medium">Live Call</div>
+            <div className="text-xs text-muted-foreground">Guide Available</div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="absolute -bottom-4 -left-4 bg-card border border-border rounded-xl p-4 shadow-soft animate-float z-20" style={{ animationDelay: "1.5s" }}>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+            <span className="text-secondary font-bold text-sm">98%</span>
+          </div>
+          <div>
+            <div className="text-sm font-medium">Success Rate</div>
+            <div className="text-xs text-muted-foreground">Visa Approval</div>
+          </div>
+        </div>
+      </div>
           </div>
         </div>
       </div>

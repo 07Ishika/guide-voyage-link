@@ -87,10 +87,12 @@ export const CommunitySection = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-bold">Latest Questions</h3>
-              <Button variant="outline" className="group">
-                View All
-                <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <a href="/community">
+                <Button variant="outline" className="group">
+                  View All
+                  <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </a>
             </div>
 
             <div className="space-y-4">
@@ -162,7 +164,7 @@ export const CommunitySection = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-bold">Featured Blogs</h3>
               <Button variant="ghost" size="sm">
-                View All
+                <a href="/community">View All</a>
               </Button>
             </div>
 
@@ -208,7 +210,9 @@ export const CommunitySection = () => {
                   Share your experience and help others in their migration journey.
                 </p>
                 <Button variant="hero" className="w-full">
-                  Ask a Question
+                  <a href="/community" className="flex items-center justify-center w-full">
+                    Ask a Question
+                  </a>
                 </Button>
               </CardContent>
             </Card>
