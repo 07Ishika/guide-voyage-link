@@ -69,6 +69,13 @@ class ApiService {
     });
   }
 
+  async updateGuideSession(sessionId, updateData) {
+    return this.fetchData(`/guide-sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  }
+
   // ==================== MESSAGES API ====================
   async getMessages(conversationId) {
     return this.fetchData(`/messages/${conversationId}`);
@@ -133,6 +140,16 @@ class ApiService {
     return this.fetchData(`/dashboard/${userId}`);
   }
 
+  // ==================== REAL-TIME API ====================
+  async getRealTimeGuideSessions(guideId, lastUpdate = null) {
+    const queryParams = lastUpdate ? `?lastUpdate=${lastUpdate}` : '';
+    return this.fetchData(`/guide-sessions/realtime/${guideId}${queryParams}`);
+  }
+
+  async getSessionById(sessionId) {
+    return this.fetchData(`/guide-sessions/${sessionId}`);
+  }
+
   // ==================== AUTHENTICATION API ====================
   async getCurrentUser() {
     try {
@@ -147,6 +164,27 @@ class ApiService {
       return await response.json();
     } catch (error) {
       console.error('Auth API Error:', error);
+      throw error;
+    }
+  }
+
+  async getCurrentUser() {
+    try {
+      const response = await fetch('http://localhost:5000/auth/user', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Not authenticated');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Get Current User API Error:', error);
       throw error;
     }
   }

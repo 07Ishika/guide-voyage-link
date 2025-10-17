@@ -1,26 +1,9 @@
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Users, Sparkles, ShieldCheck, ArrowRight, Sun, Moon } from "lucide-react";
-import GoogleLoginCover from "../components/GoogleLoginCover";
+import { Users, Sparkles, ShieldCheck, ArrowRight } from "lucide-react";
+import ExploreNowButton from "../components/GoogleLoginCover";
+import ThemeToggle from "../components/ThemeToggle";
 
 const Cover = () => {
-  const [isDark, setIsDark] = useState(true);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  useEffect(() => {
-    // Initialize based on existing class or system preference
-    const hasDarkClass = document.documentElement.classList.contains("dark");
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const nextIsDark = hasDarkClass || prefersDark;
-    setIsDark(nextIsDark);
-    if (nextIsDark && !hasDarkClass) {
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#f6f8ff] via-[#eef2ff] to-white dark:from-[#0b0620] dark:via-[#14112d] dark:to-[#1a1240]">
@@ -34,13 +17,7 @@ const Cover = () => {
 
       {/* Top-right controls (glassmorphism) */}
       <div className="absolute right-4 top-4 sm:right-6 sm:top-6 z-20">
-        <button
-          onClick={toggleTheme}
-          className="backdrop-blur-md bg-black/5 dark:bg-black/20 border border-black/10 dark:border-white/10 shadow-soft hover:bg-black/10 dark:hover:bg-white/10 transition-colors rounded-full w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center"
-          aria-label="Toggle theme"
-        >
-          {isDark ? <Sun className="h-5 w-5 text-white" /> : <Moon className="h-5 w-5 text-black" />}
-        </button>
+        <ThemeToggle />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 py-10 md:py-14 lg:py-20 relative z-10">
@@ -93,11 +70,11 @@ const Cover = () => {
           <aside className="w-full max-w-md mx-auto lg:mx-0 bg-white/70 dark:bg-card/60 backdrop-blur-md border border-black/10 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-soft">
             <h3 className="text-xl font-semibold text-foreground">Get Started</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Sign in to access your personalized migration guidance.
+              Explore the app and choose your role to get started.
             </p>
 
             <div className="mt-6 space-y-3">
-              <GoogleLoginCover />
+              <ExploreNowButton />
               <a href="/home" className="block">
                 <Button className="w-full" variant="outline">
                   View Pricing Plans
@@ -110,7 +87,7 @@ const Cover = () => {
                 <ShieldCheck className="w-4 h-4 text-secondary" />
                 <div>
                   <div className="text-sm font-medium">Demo Mode Available</div>
-                  <div className="text-xs text-muted-foreground">Explore the app with mock data if sign-in is not configured.</div>
+                  <div className="text-xs text-muted-foreground">Try the app with demo data or sign in with Google.</div>
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React from "react";
-
+import { Button } from "@/components/ui/button";
 
 const GoogleLoginButton = ({ role }) => {
   const handleLogin = () => {
@@ -8,24 +8,26 @@ const GoogleLoginButton = ({ role }) => {
   };
 
   return (
-    <button
+    <Button
       onClick={handleLogin}
+      className="w-full bg-[#4285F4] hover:bg-[#3367D6] text-white border-none"
       style={{
-        background: "#4285F4",
-        color: "white",
-        border: "none",
-        padding: "10px 20px",
-        borderRadius: "4px",
-        fontSize: "16px",
-        cursor: "pointer",
         display: "flex",
         alignItems: "center",
-        gap: "8px"
+        justifyContent: "center",
+        gap: "8px",
+        padding: "12px 20px",
+        fontSize: "16px",
+        fontWeight: "500"
       }}
     >
-      <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" style={{ width: 20, height: 20 }} />
+      <img 
+        src="https://developers.google.com/identity/images/g-logo.png" 
+        alt="Google logo" 
+        style={{ width: 20, height: 20 }} 
+      />
       Login with Google
-    </button>
+    </Button>
   );
 };
 

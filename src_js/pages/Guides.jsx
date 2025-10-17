@@ -19,18 +19,19 @@ import {
   Award,
   Users
 } from "lucide-react";
-// import apiService from "../services/api";
-// import { useApiData } from "../hooks/useApi";
+import apiService from "../services/api";
+import { useApiData } from "../hooks/useApi";
 
 const Guides = () => {
   const navigate = useNavigate();
   
-  // Use mock data only to avoid API errors
-  const guides = [];
-  const guidesLoading = false;
-  const guidesError = null;
+  // Fetch real guide data from database
+  const { data: guides = [], loading: guidesLoading, error: guidesError } = useApiData(
+    () => apiService.searchGuides(),
+    []
+  );
 
-  // Fallback mock data for development
+  // Remove mock data - use only real guides from database
   const mockGuides = [
     {
       _id: "guide1",
@@ -68,8 +69,8 @@ const Guides = () => {
     }
   ];
 
-  // Use real guides if available, otherwise fallback to mock data
-  const displayGuides = guides.length > 0 ? guides : mockGuides;
+  // Use only real guides from database, with fallback to empty array
+  const displayGuides = guides || [];
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("All");
@@ -77,11 +78,11 @@ const Guides = () => {
 
   const countries = ["All", "Canada", "Germany", "Australia", "United Kingdom"];
 
-  const filteredGuides = displayGuides
+  const filteredGuides = (displayGuides || [])
     .filter(guide => 
       (selectedCountry === "All" || guide.residenceCountry === selectedCountry) &&
-      (guide.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       guide.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (guide.fullName && guide.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       guide.specialization && guide.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
        (guide.expertiseAreas && guide.expertiseAreas.some(spec => spec.toLowerCase().includes(searchTerm.toLowerCase()))))
     )
     .sort((a, b) => {
@@ -161,14 +162,14 @@ const Guides = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <Users className="w-8 h-8 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-primary">{displayGuides.length}+</div>
+              <div className="text-2xl font-bold text-primary">{(displayGuides || []).length}+</div>
               <div className="text-sm text-muted-foreground">Verified Guides</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Globe className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-secondary">{new Set(displayGuides.map(g => g.residenceCountry)).size}+</div>
+              <div className="text-2xl font-bold text-secondary">{new Set((displayGuides || []).map(g => g.residenceCountry)).size}+</div>
               <div className="text-sm text-muted-foreground">Countries</div>
             </CardContent>
           </Card>
@@ -183,7 +184,7 @@ const Guides = () => {
             <CardContent className="p-4 text-center">
               <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
               <div className="text-2xl font-bold text-yellow-500">
-                {displayGuides.length > 0 ? (displayGuides.reduce((sum, g) => sum + (g.rating || 0), 0) / displayGuides.length).toFixed(1) : '4.8'}
+                {(displayGuides || []).length > 0 ? ((displayGuides || []).reduce((sum, g) => sum + (g.rating || 0), 0) / (displayGuides || []).length).toFixed(1) : '4.8'}
               </div>
               <div className="text-sm text-muted-foreground">Avg Rating</div>
             </CardContent>
@@ -200,7 +201,9 @@ const Guides = () => {
         {guidesError && (
           <div className="text-center py-12">
             <div className="text-red-500 mb-4">Error loading guides: {guidesError}</div>
-            <div className="text-muted-foreground">Showing sample guides for demonstration</div>
+            <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
+              Retry
+            </Button>
           </div>
         )}
 

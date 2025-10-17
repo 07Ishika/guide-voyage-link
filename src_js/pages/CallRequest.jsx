@@ -71,38 +71,70 @@ const CallRequest = () => {
       return;
     }
 
-    const requestData = {
-      guideId: guideData.id,
-      guideName: guideData.name,
-      guideLocation: guideData.location,
-      guideSpecialization: guideData.specialization,
-      migrantId: currentUser._id,
-      migrantName: currentUser.displayName,
-      migrantEmail: currentUser.email,
-      title: `Call Request: ${formData.purpose}`,
-      description: formData.additionalDetails,
+    // Create session request data for guide_sessions collection
+    const sessionData = {
+      guideId: guideData.userId || guideData.id, // Use userId for proper matching
+      migrantId: currentUser._id.toString(),
+      sessionType: 'consultation', // consultation, follow_up, document_review, interview_prep
+      scheduledAt: null, // Will be set when guide accepts and schedules
+      duration: 60, // Default 60 minutes
+      status: 'pending', // pending, scheduled, in_progress, completed, cancelled
+      meetingLink: null, // Will be set when scheduled
+      notes: formData.additionalDetails,
+      rating: null,
+      feedback: null,
+      
+      // Additional request details
+      title: `${formData.purpose.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Consultation`,
+      purpose: formData.purpose,
       urgency: formData.urgency,
       budget: formData.budget || 'Not specified',
       timeline: formData.timeline || 'Flexible',
-      preferredTime: formData.preferredTime,
+      preferredTime: formData.preferredTime || 'Flexible',
       specificQuestions: formData.specificQuestions,
-      status: 'pending',
-      type: 'call_request',
-      createdAt: new Date().toISOString()
+      
+      // Guide and migrant info for easy access
+      guideName: guideData.fullName || guideData.name,
+      guideEmail: guideData.email,
+      guideLocation: guideData.residenceCountry || guideData.location,
+      guideSpecialization: Array.isArray(guideData.specialization) ? guideData.specialization.join(', ') : guideData.specialization,
+      migrantName: currentUser.displayName,
+      migrantEmail: currentUser.email,
+      
+      requestStatus: 'pending', // pending, accepted, declined
+      
+      // Timestamps
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     try {
-      await submitRequest(() => apiService.createMigrantRequest(requestData));
+      // Debug: Log the session data being sent
+      console.log('🚀 Sending session request:', {
+        guideData,
+        sessionData,
+        currentUser
+      });
+      
+      await submitRequest(() => apiService.createGuideSession(sessionData));
       
       toast({
-        title: "Call Request Sent!",
-        description: "Your call request has been sent to the guide. They will respond within 24 hours.",
+        title: "✅ Call Request Sent Successfully!",
+        description: `Your request has been sent to ${guideData.fullName || guideData.name}. They will respond within 24 hours.`,
+      });
+      
+      // Show success message with guide info
+      console.log('📤 Call request sent successfully:', {
+        guide: guideData.fullName || guideData.name,
+        migrant: currentUser.displayName,
+        purpose: formData.purpose,
+        urgency: formData.urgency
       });
       
       // Redirect to guides page after successful submission
       setTimeout(() => {
         navigate('/guides');
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       toast({

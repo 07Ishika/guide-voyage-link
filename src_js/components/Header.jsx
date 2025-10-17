@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Menu, X } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export const Header = () => {
   const location = useLocation();
+  const { currentUser, logout, isGuide, isMigrant } = useAuth();
   const [isDark, setIsDark] = useState(() => {
     // Check localStorage first, then system preference
     const savedTheme = localStorage.getItem('theme');
@@ -14,10 +16,6 @@ export const Header = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Determine if user is a guide or migrant based on route
-  const isGuide = location.pathname === '/guide' || location.pathname === '/home/guide' || location.pathname === '/migrant-requests' || location.pathname === '/guide/profile' || location.pathname === '/guide/community';
-  const isMigrant = !isGuide;
   
 
   // Initialize theme on mount
@@ -61,23 +59,24 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+            {isGuide && (
+              <a href="/dashboard-guide" className="text-muted-foreground hover:text-primary transition-smooth">
+                Dashboard
+              </a>
+            )}
             <a href={isGuide ? "/guide/community" : "/community"} className="text-muted-foreground hover:text-primary transition-smooth">
               Community
             </a>
             {isGuide ? (
               <a href="/migrant-requests" className="text-muted-foreground hover:text-primary transition-smooth">
-                Migrant Requests
+                Find Migrants
               </a>
             ) : (
               <a href="/guides" className="text-muted-foreground hover:text-primary transition-smooth">
                 Find Guides
               </a>
             )}
-            {isGuide ? (
-              <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth">
-                Features
-              </a>
-            ) : (
+            {!isGuide && (
               <a href="/cost-of-living" className="text-muted-foreground hover:text-primary transition-smooth">
                 Costlytic
               </a>
@@ -98,14 +97,41 @@ export const Header = () => {
 
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-3">
-              <Button variant="ghost" className="text-muted-foreground hover:text-primary">
-                Sign In
-              </Button>
-              <Link to={isGuide ? "/guide/profile" : "/profile"}>
-                <Button variant="hero" className="shadow-glow">
-                  Profile
-                </Button>
-              </Link>
+              {currentUser ? (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    {currentUser.displayName}
+                  </span>
+                  <Link to={isGuide ? "/guide/profile" : "/profile"}>
+                    <Button variant="hero" className="shadow-glow">
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="text-muted-foreground hover:text-primary"
+                    onClick={async () => {
+                      await logout();
+                      window.location.href = '/';
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/role">
+                    <Button variant="ghost" className="text-muted-foreground hover:text-primary">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/role">
+                    <Button variant="hero" className="shadow-glow">
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Toggle */}
@@ -124,36 +150,64 @@ export const Header = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4 animate-slide-up">
             <nav className="flex flex-col space-y-4">
+              {isGuide && (
+                <a href="/dashboard-guide" className="text-muted-foreground hover:text-primary transition-smooth py-2">
+                  Dashboard
+                </a>
+              )}
               <a href={isGuide ? "/guide/community" : "/community"} className="text-muted-foreground hover:text-primary transition-smooth py-2">
                 Community
               </a>
               {isGuide ? (
                 <a href="/migrant-requests" className="text-muted-foreground hover:text-primary transition-smooth py-2">
-                  Migrant Requests
+                  Find Migrants
                 </a>
               ) : (
                 <a href="/guides" className="text-muted-foreground hover:text-primary transition-smooth py-2">
                   Find Guides
                 </a>
               )}
-              {isGuide ? (
-                <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth py-2">
-                  Features
-                </a>
-              ) : (
+              {!isGuide && (
                 <a href="/cost-of-living" className="text-muted-foreground hover:text-primary transition-smooth py-2">
                   Costlytic
                 </a>
               )}
               <div className="pt-4 space-y-3">
-                <Button variant="ghost" className="w-full text-muted-foreground hover:text-primary">
-                  Sign In
-                </Button>
-                <Link to={isGuide ? "/guide/profile" : "/profile"}>
-                  <Button variant="hero" className="w-full shadow-glow">
-                    Profile
-                  </Button>
-                </Link>
+                {currentUser ? (
+                  <>
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      {currentUser.displayName}
+                    </div>
+                    <Link to={isGuide ? "/guide/profile" : "/profile"}>
+                      <Button variant="hero" className="w-full shadow-glow">
+                        Profile
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-muted-foreground hover:text-primary"
+                      onClick={async () => {
+                        await logout();
+                        window.location.href = '/';
+                      }}
+                    >
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/role">
+                      <Button variant="ghost" className="w-full text-muted-foreground hover:text-primary">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link to="/role">
+                      <Button variant="hero" className="w-full shadow-glow">
+                        Get Started
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>

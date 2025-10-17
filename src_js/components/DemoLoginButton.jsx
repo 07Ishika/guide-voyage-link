@@ -24,9 +24,9 @@ const DemoLoginButton = ({ role }) => {
         
         // Redirect based on role
         if (role === 'guide') {
-          navigate('/home/guide');
+          navigate('/dashboard-guide');
         } else {
-          navigate('/home');
+          navigate('/guides');
         }
       } else {
         console.error('Demo login failed');

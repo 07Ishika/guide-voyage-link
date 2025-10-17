@@ -25,21 +25,36 @@ import {
   Calendar,
   Globe,
   Zap,
-  Heart
+  Heart,
+  CheckCircle,
+  XCircle,
+  User
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const MigrantRequests = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSpecialization, setFilterSpecialization] = useState("all");
 
-  // Fetch migrant requests from API
+  // Get current user data
+  const { data: currentUser, loading: userLoading } = useApiData(
+    () => apiService.getCurrentUser(),
+    []
+  );
+
+  // Fetch session requests for this specific guide
   const { data: requests, loading: requestsLoading, error: requestsError, refetch: refetchRequests } = useApiData(
-    () => apiService.getMigrantRequests({
-      status: filterStatus !== 'all' ? filterStatus : undefined,
-      specialization: filterSpecialization !== 'all' ? filterSpecialization : undefined
-    }),
-    [filterStatus, filterSpecialization]
+    () => {
+      if (!currentUser?._id) return Promise.resolve([]);
+      return apiService.getGuideSessions({ 
+        guideId: currentUser._id,
+        requestStatus: filterStatus !== 'all' ? filterStatus : undefined
+      });
+    },
+    [currentUser?._id, filterStatus, filterSpecialization]
   );
 
   // API mutation for creating new requests
@@ -274,122 +289,141 @@ const MigrantRequests = () => {
         </div>
       </section>
 
-      {/* Requests Grid */}
+      {/* Session Requests Grid */}
       <section className="py-12 px-6">
         <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMigrants.map((migrant) => (
-              <Card key={migrant.id} className="bg-card border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 group">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">
-                          {migrant.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                      <div>
-                        <CardTitle className="text-foreground text-lg">{migrant.name}</CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-primary" />
-                          <span className="text-sm text-muted-foreground">Verified</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge className={`px-2 py-1 text-xs ${getUrgencyColor(migrant.urgency)}`}>
-                        {migrant.urgency} priority
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {migrant.status}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span>{migrant.location} → {migrant.destination}</span>
-                    </div>
-                    
-                    <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-                      <span className="text-primary font-medium">{migrant.purpose}</span>
-                    </div>
+          {sessionsLoading && (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground">Loading requests...</div>
+            </div>
+          )}
 
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Languages className="w-4 h-4 text-secondary" />
-                        <span>{migrant.languages.join(', ')}</span>
+          {sessionsError && (
+            <div className="text-center py-12">
+              <div className="text-red-500 mb-2">Error loading requests: {sessionsError}</div>
+              <Button onClick={refetchSessions} variant="outline">Retry</Button>
+            </div>
+          )}
+
+          {!sessionsLoading && sessions.length === 0 && (
+            <Card className="max-w-md mx-auto">
+              <CardContent className="p-8 text-center">
+                <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No migrant requests yet</h3>
+                <p className="text-muted-foreground">
+                  When migrants request consultations with you, they'll appear here.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid gap-6">
+            {filteredSessions.map((session) => (
+              <Card key={session._id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {session.migrantName?.split(' ').map(n => n[0]).join('') || 'M'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">{session.migrantName || 'Migrant'}</CardTitle>
+                        <CardDescription className="flex items-center space-x-2">
+                          <User className="w-4 h-4" />
+                          <span>{session.migrantEmail}</span>
+                        </CardDescription>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <span>{migrant.response}</span>
-                      </div>
+                    </div>
+                    <div className="flex flex-col items-end space-y-2">
+                      <Badge className={`text-xs ${getStatusColor(session.requestStatus || session.status)}`}>
+                        {session.requestStatus || session.status}
+                      </Badge>
+                      {session.urgency && (
+                        <Badge variant="outline" className={`text-xs ${getUrgencyColor(session.urgency)}`}>
+                          {session.urgency} priority
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
-
+                
                 <CardContent className="space-y-4">
-                  {/* Budget and Timeline */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="w-4 h-4 text-green-500" />
-                        <span className="font-medium text-foreground">Budget</span>
-                      </div>
-                      <span className="text-muted-foreground">{migrant.budget}</span>
+                  <div>
+                    <h4 className="font-medium text-foreground mb-2">{session.title}</h4>
+                    <p className="text-sm text-muted-foreground">{session.notes || session.purpose}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <span className="text-muted-foreground">Budget:</span>
+                      <span className="font-medium">{session.budget}</span>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium text-foreground">Timeline</span>
-                      </div>
-                      <span className="text-muted-foreground">{migrant.timeline}</span>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                      <span className="text-muted-foreground">Timeline:</span>
+                      <span className="font-medium">{session.timeline}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-purple-500" />
+                      <span className="text-muted-foreground">Preferred:</span>
+                      <span className="font-medium">{session.preferredTime || 'Flexible'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-4 h-4 text-orange-500" />
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span className="font-medium">{session.duration || 60} min</span>
                     </div>
                   </div>
 
-                  {/* Guide Performance */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="text-foreground font-medium">{migrant.rating}</span>
-                        <span className="text-muted-foreground">({migrant.reviews})</span>
-                      </div>
-                      <div className="text-green-600 dark:text-green-400 font-medium">{migrant.success} success</div>
+                  {session.specificQuestions && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <h5 className="text-sm font-medium mb-1">Specific Questions:</h5>
+                      <p className="text-sm text-muted-foreground">{session.specificQuestions}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-foreground font-bold">{migrant.price}</div>
-                      <div className="text-muted-foreground text-sm">per session</div>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      className="flex-1 bg-primary hover:bg-primary/90 text-white" 
-                    >
-                      <Video className="w-4 h-4 mr-2" />
-                      Accept Call
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="border-border text-foreground hover:bg-muted"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {session.requestStatus === 'pending' && (
+                    <div className="flex space-x-2 pt-4 border-t border-border">
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => handleSessionAction(session._id, 'accepted')}
+                        disabled={updateLoading}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Accept
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleSessionAction(session._id, 'declined')}
+                        disabled={updateLoading}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+
+                  {session.requestStatus === 'accepted' && (
+                    <div className="flex space-x-2 pt-4 border-t border-border">
+                      <Button size="sm" variant="outline">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Message
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Schedule
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {filteredMigrants.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground text-lg mb-2">No requests found</div>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
-            </div>
-          )}
         </div>
       </section>
     </div>

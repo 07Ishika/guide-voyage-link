@@ -1011,10 +1011,10 @@ const Profile = () => {
                        </label>
                        <input
                          type="text"
-                         value={editableProfileData.fullName || ''}
+                         value={formData.fullName || ''}
                          onChange={(e) =>
-                           setEditableProfileData({
-                             ...editableProfileData,
+                           setFormData({
+                             ...formData,
                              fullName: e.target.value,
                            })
                          }
@@ -1052,9 +1052,9 @@ const Profile = () => {
                          Bio
                        </label>
                        <textarea
-                         value={editableProfileData.bio || ''}
+                         value={formData.bio || ''}
                          onChange={(e) =>
-                           setEditableProfileData({ ...editableProfileData, bio: e.target.value })
+                           setFormData({ ...formData, bio: e.target.value })
                          }
                          disabled={!isEditing}
                          rows={3}
@@ -1255,10 +1255,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.specialization || ''}
+                              value={finalProfileData.specialization}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   specialization: e.target.value,
                                 })
                               }
@@ -1274,10 +1274,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.years_experience || ''}
+                              value={finalProfileData.years_experience}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   years_experience: e.target.value,
                                 })
                               }
@@ -1293,10 +1293,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.hourly_rate || ''}
+                              value={finalProfileData.hourly_rate}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   hourly_rate: e.target.value,
                                 })
                               }
@@ -1312,10 +1312,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.availability || ''}
+                              value={finalProfileData.availability}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   availability: e.target.value,
                                 })
                               }
@@ -1332,10 +1332,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.citizenship_country || ''}
+                              value={finalProfileData.citizenship_country}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   citizenship_country: e.target.value,
                                 })
                               }
@@ -1351,10 +1351,10 @@ Alternatively, you can manually type your location in the text field above.`)
                             </label>
                             <input
                               type="text"
-                              value={editableProfileData.residence_country || ''}
+                              value={finalProfileData.residence_country}
                               onChange={(e) =>
                                 setEditableProfileData({
-                                  ...editableProfileData,
+                                  ...profileData,
                                   residence_country: e.target.value,
                                 })
                               }

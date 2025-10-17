@@ -1,9 +1,10 @@
 // Basic Express server setup for MongoDB connection
 
 const express = require('express');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const cors = require('cors');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 require('dotenv').config();
@@ -19,9 +20,18 @@ app.use(cors({
 app.use(express.json());
 app.use(session({
   secret: 'your-session-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false } // set to true if using https
+  resave: true,
+  saveUninitialized: true,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/voyagery',
+    touchAfter: 24 * 3600 // lazy session update
+  }),
+  cookie: {
+    secure: false, // set to true if using https
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -61,9 +71,28 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await usersCollection.findOne({ _id: id });
+    console.log('Deserializing user with ID:', id, 'Type:', typeof id);
+
+    // Check if id is a valid ObjectId string
+    if (!id || typeof id !== 'string' || (id.length !== 12 && id.length !== 24)) {
+      console.log('Invalid ObjectId format:', id);
+      return done(null, false);
+    }
+
+    // Try to create ObjectId
+    let objectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch (objectIdError) {
+      console.log('Failed to create ObjectId from:', id);
+      return done(null, false);
+    }
+
+    const user = await usersCollection.findOne({ _id: objectId });
+    console.log('Deserialized user:', user ? user.displayName : 'Not found');
     done(null, user);
   } catch (err) {
+    console.error('Deserialize error:', err);
     done(err, null);
   }
 });
@@ -109,9 +138,27 @@ app.get('/auth/google/callback',
     failureRedirect: '/auth/failure',
     session: true
   }),
-  (req, res) => {
-    // Successful authentication, redirect to /role
-  res.redirect('http://localhost:5173/role');
+  async (req, res) => {
+    // Successful authentication, redirect based on user role
+    console.log('✅ OAuth callback successful - User:', req.user?.displayName, 'Role:', req.user?.role);
+
+    const user = req.user;
+    if (user && user.role) {
+      console.log('🎯 Redirecting to role-based dashboard:', user.role);
+
+      if (user.role === 'guide') {
+        res.redirect('http://localhost:5173/home/guide');
+      } else if (user.role === 'migrant') {
+        res.redirect('http://localhost:5173/home');
+      } else {
+        // If no role is set, redirect to role selection
+        res.redirect('http://localhost:5173/role');
+      }
+    } else {
+      console.log('❌ No user or role found, redirecting to role selection');
+      // If user data is not available, redirect to role selection
+      res.redirect('http://localhost:5173/role');
+    }
   }
 );
 
@@ -121,40 +168,263 @@ passport.use(new GoogleStrategy({
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL,
   passReqToCallback: true
-}, async function(req, accessToken, refreshToken, profile, done) {
+}, async function (req, accessToken, refreshToken, profile, done) {
   try {
     let user = await usersCollection.findOne({ googleId: profile.id });
+    const selectedRole = req.session.oauthRole;
+    
     if (!user) {
+      // Create new user with role
       const newUser = {
         googleId: profile.id,
         displayName: profile.displayName,
         email: profile.emails && profile.emails[0] ? profile.emails[0].value : null,
         photo: profile.photos && profile.photos[0] ? profile.photos[0].value : null,
-        role: req.session.oauthRole || null
+        role: selectedRole || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       const result = await usersCollection.insertOne(newUser);
       user = { ...newUser, _id: result.insertedId };
-    } else if (!user.role && req.session.oauthRole) {
-      // Update role if not set
-      await usersCollection.updateOne({ googleId: profile.id }, { $set: { role: req.session.oauthRole } });
-      user.role = req.session.oauthRole;
+      
+      // Create profile automatically
+      if (selectedRole) {
+        await createUserProfile(user, selectedRole);
+      }
+    } else if (!user.role && selectedRole) {
+      // Update existing user with role
+      await usersCollection.updateOne(
+        { googleId: profile.id }, 
+        { 
+          $set: { 
+            role: selectedRole,
+            updatedAt: new Date()
+          } 
+        }
+      );
+      user.role = selectedRole;
+      
+      // Create profile if it doesn't exist
+      await createUserProfile(user, selectedRole);
     }
+    
     // Clean up session
     req.session.oauthRole = undefined;
     done(null, user);
   } catch (err) {
+    console.error('OAuth strategy error:', err);
     done(err, null);
   }
 }));
+
+// Helper function to create user profile
+async function createUserProfile(user, role) {
+  try {
+    const existingProfile = await profilesCollection.findOne({ userId: user._id.toString() });
+    if (existingProfile) {
+      console.log('Profile already exists for user:', user.displayName);
+      return;
+    }
+
+    const baseProfile = {
+      userId: user._id.toString(),
+      fullName: user.displayName,
+      email: user.email,
+      role: role,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    let profileData;
+    if (role === 'guide') {
+      profileData = {
+        ...baseProfile,
+        specialization: ['General Consultation'],
+        residenceCountry: 'Canada',
+        targetCountries: ['Canada'],
+        expertiseAreas: ['Immigration', 'Visa Process'],
+        rating: 4.5,
+        totalReviews: 0,
+        hourlyRate: 50,
+        languages: ['English'],
+        yearsExperience: '2+ years',
+        availability: 'Available',
+        verifiedStatus: 'pending',
+        bio: 'Experienced guide ready to help with your immigration journey.'
+      };
+    } else {
+      profileData = {
+        ...baseProfile,
+        currentCountry: 'India',
+        targetCountries: ['Canada'],
+        profession: 'Professional',
+        experience: '3+ years',
+        education: 'Bachelor\'s Degree',
+        languages: ['English'],
+        immigrationGoals: ['Permanent Residence'],
+        timeline: '6-12 months',
+        budget: '$50-80 per session'
+      };
+    }
+
+    await profilesCollection.insertOne(profileData);
+    console.log(`✅ Created ${role} profile for:`, user.displayName);
+  } catch (error) {
+    console.error('Error creating profile:', error);
+  }
+}
 app.get('/auth/failure', (req, res) => {
   res.status(401).json({ error: 'Authentication failed' });
 });
 
+// Demo login endpoint for testing
+app.post('/auth/demo-login', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    // Find the user in the database
+    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Set session data - ensure ObjectId is properly stored
+    const userIdString = user._id.toString();
+    req.session.passport = { user: userIdString };
+    req.user = user;
+
+    console.log('✅ Demo login successful for:', user.displayName, '(Role:', user.role, ') ID:', userIdString);
+    res.json(user);
+  } catch (err) {
+    console.error('❌ Demo login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Get all users for demo login selection
+app.get('/auth/demo-users', async (req, res) => {
+  try {
+    const users = await usersCollection.find({}).toArray();
+    const userList = users.map(user => ({
+      _id: user._id,
+      displayName: user.displayName,
+      email: user.email,
+      role: user.role
+    }));
+    console.log('📋 Available users for demo login:', userList);
+    res.json(userList);
+  } catch (err) {
+    console.error('❌ Error fetching users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Manual login by email or name
+app.post('/auth/manual-login', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    let query = {};
+    if (email) {
+      query.email = { $regex: email, $options: 'i' }; // Case insensitive
+    } else if (name) {
+      query.displayName = { $regex: name, $options: 'i' }; // Case insensitive
+    } else {
+      return res.status(400).json({ error: 'Email or name required' });
+    }
+
+    console.log('🔍 Searching for user with query:', query);
+
+    // Find the user in the database
+    const user = await usersCollection.findOne(query);
+    if (!user) {
+      console.log('❌ User not found with query:', query);
+      return res.status(404).json({ error: 'User not found in database' });
+    }
+
+    // Ensure profile exists for the user
+    if (user.role) {
+      await createUserProfile(user, user.role);
+    }
+
+    // Set session data - ensure ObjectId is properly stored
+    const userIdString = user._id.toString();
+    req.session.passport = { user: userIdString };
+    req.user = user;
+
+    console.log('✅ Manual login successful for:', user.displayName, '(Role:', user.role, ') ID:', userIdString);
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        displayName: user.displayName,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('❌ Manual login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 app.get('/auth/user', (req, res) => {
+  console.log('Auth check - Session:', req.session);
+  console.log('Auth check - User:', req.user);
+  console.log('Auth check - Is authenticated:', req.isAuthenticated());
+
   if (req.isAuthenticated()) {
     res.json(req.user);
   } else {
     res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+// Set user role (for users who logged in without selecting a role)
+app.post('/auth/set-role', async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { role } = req.body;
+    if (!role || !['migrant', 'guide'].includes(role)) {
+      return res.status(400).json({ error: 'Valid role required (migrant or guide)' });
+    }
+
+    const userId = req.user._id;
+    
+    // Update user role in database
+    await usersCollection.updateOne(
+      { _id: userId },
+      { 
+        $set: { 
+          role: role,
+          updatedAt: new Date()
+        } 
+      }
+    );
+
+    // Update session user object
+    req.user.role = role;
+
+    // Create profile for the user
+    await createUserProfile(req.user, role);
+
+    console.log('✅ Role set for user:', req.user.displayName, 'Role:', role);
+    
+    res.json({
+      success: true,
+      user: {
+        _id: req.user._id,
+        displayName: req.user.displayName,
+        email: req.user.email,
+        role: role
+      }
+    });
+  } catch (err) {
+    console.error('❌ Error setting role:', err);
+    res.status(500).json({ error: 'Failed to set role' });
   }
 });
 
@@ -199,17 +469,17 @@ app.get('/api/migrant-requests', async (req, res) => {
   try {
     const { status, specialization, limit = 20, skip = 0 } = req.query;
     let query = {};
-    
+
     if (status) query.status = status;
     if (specialization) query.specialization = { $in: [specialization] };
-    
+
     const requests = await migrantRequestsCollection
       .find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .toArray();
-    
+
     res.json(requests);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch migrant requests' });
@@ -250,20 +520,30 @@ app.put('/api/migrant-requests/:requestId', async (req, res) => {
 // Get guide sessions
 app.get('/api/guide-sessions', async (req, res) => {
   try {
-    const { guideId, migrantId, status } = req.query;
+    const { guideId, migrantId, status, requestStatus, guideName } = req.query;
     let query = {};
-    
+
     if (guideId) query.guideId = guideId;
     if (migrantId) query.migrantId = migrantId;
     if (status) query.status = status;
-    
+    if (requestStatus) query.requestStatus = requestStatus;
+    if (guideName) query.guideName = { $regex: guideName, $options: 'i' }; // Case insensitive search
+
+    console.log('🔍 Fetching sessions with query:', query);
+
     const sessions = await guideSessionsCollection
       .find(query)
       .sort({ createdAt: -1 })
       .toArray();
-    
+
+    console.log('📋 Found sessions:', sessions.length);
+    if (sessions.length > 0) {
+      console.log('📄 Sample session:', sessions[0]);
+    }
+
     res.json(sessions);
   } catch (err) {
+    console.error('❌ Error fetching sessions:', err);
     res.status(500).json({ error: 'Failed to fetch guide sessions' });
   }
 });
@@ -271,16 +551,85 @@ app.get('/api/guide-sessions', async (req, res) => {
 // Create guide session
 app.post('/api/guide-sessions', async (req, res) => {
   try {
+    console.log('📝 Received session request:', req.body);
+
     const sessionData = {
       ...req.body,
       createdAt: new Date(),
       updatedAt: new Date(),
       status: 'scheduled'
     };
+
+    console.log('💾 Storing session data:', sessionData);
     const result = await guideSessionsCollection.insertOne(sessionData);
+
+    console.log('✅ Session stored with ID:', result.insertedId);
     res.json({ success: true, sessionId: result.insertedId });
   } catch (err) {
+    console.error('❌ Error creating session:', err);
     res.status(500).json({ error: 'Failed to create guide session' });
+  }
+});
+
+// Update guide session
+app.put('/api/guide-sessions/:sessionId', async (req, res) => {
+  try {
+    console.log('📝 Updating session:', req.params.sessionId, 'with data:', req.body);
+
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date()
+    };
+
+    const result = await guideSessionsCollection.updateOne(
+      { _id: new ObjectId(req.params.sessionId) },
+      { $set: updateData }
+    );
+
+    console.log('✅ Session updated:', result);
+    
+    // Get the updated session to return complete data
+    const updatedSession = await guideSessionsCollection.findOne({ _id: new ObjectId(req.params.sessionId) });
+    
+    res.json({ success: true, result, session: updatedSession });
+  } catch (err) {
+    console.error('❌ Error updating session:', err);
+    res.status(500).json({ error: 'Failed to update guide session' });
+  }
+});
+
+// Get session by ID
+app.get('/api/guide-sessions/:sessionId', async (req, res) => {
+  try {
+    const session = await guideSessionsCollection.findOne({ _id: new ObjectId(req.params.sessionId) });
+    
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    res.json(session);
+  } catch (err) {
+    console.error('❌ Error fetching session:', err);
+    res.status(500).json({ error: 'Failed to fetch session' });
+  }
+});
+
+// Delete session by ID (when guide declines)
+app.delete('/api/guide-sessions/:sessionId', async (req, res) => {
+  try {
+    console.log('🗑️ Deleting session:', req.params.sessionId);
+
+    const result = await guideSessionsCollection.deleteOne({ _id: new ObjectId(req.params.sessionId) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    console.log('✅ Session deleted successfully');
+    res.json({ success: true, message: 'Session deleted successfully' });
+  } catch (err) {
+    console.error('❌ Error deleting session:', err);
+    res.status(500).json({ error: 'Failed to delete session' });
   }
 });
 
@@ -292,7 +641,7 @@ app.get('/api/messages/:conversationId', async (req, res) => {
       .find({ conversationId: req.params.conversationId })
       .sort({ createdAt: 1 })
       .toArray();
-    
+
     res.json(messages);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch messages' });
@@ -337,7 +686,7 @@ app.get('/api/documents/:userId', async (req, res) => {
       .find({ userId: req.params.userId })
       .sort({ uploadedAt: -1 })
       .toArray();
-    
+
     res.json(documents);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch documents' });
@@ -352,7 +701,7 @@ app.get('/api/reviews/:guideId', async (req, res) => {
       .find({ guideId: req.params.guideId })
       .sort({ createdAt: -1 })
       .toArray();
-    
+
     res.json(reviews);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch reviews' });
@@ -381,7 +730,7 @@ app.get('/api/notifications/:userId', async (req, res) => {
       .find({ userId: req.params.userId })
       .sort({ createdAt: -1 })
       .toArray();
-    
+
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
@@ -416,25 +765,59 @@ app.post('/api/notifications', async (req, res) => {
   }
 });
 
+// Real-time session updates endpoint
+app.get('/api/guide-sessions/realtime/:guideId', async (req, res) => {
+  try {
+    const { guideId } = req.params;
+    const { lastUpdate } = req.query;
+    
+    let query = { guideId };
+    
+    // If lastUpdate is provided, only get sessions updated after that time
+    if (lastUpdate) {
+      query.updatedAt = { $gt: new Date(lastUpdate) };
+    }
+    
+    const sessions = await guideSessionsCollection
+      .find(query)
+      .sort({ updatedAt: -1 })
+      .toArray();
+    
+    res.json({
+      sessions,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('❌ Error fetching real-time sessions:', err);
+    res.status(500).json({ error: 'Failed to fetch real-time sessions' });
+  }
+});
+
 // ==================== SEARCH & FILTERS API ====================
 // Search guides
 app.get('/api/guides/search', async (req, res) => {
   try {
     const { specialization, country, rating, limit = 20, skip = 0 } = req.query;
-    let query = { role: 'guide', verified: true };
-    
+    let query = { role: 'guide' }; // Removed verified requirement to show all guides
+
     if (specialization) query.specialization = { $in: [specialization] };
     if (country) query.targetCountries = { $in: [country] };
     if (rating) query.rating = { $gte: parseFloat(rating) };
-    
+
+    console.log('🔍 Searching for guides with query:', query);
+
     const guides = await profilesCollection
       .find(query)
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .toArray();
-    
+
+    console.log('👥 Found guides:', guides.length);
+    console.log('📄 Guide data:', guides);
+
     res.json(guides);
   } catch (err) {
+    console.error('❌ Error searching guides:', err);
     res.status(500).json({ error: 'Failed to search guides' });
   }
 });
@@ -443,22 +826,22 @@ app.get('/api/guides/search', async (req, res) => {
 app.get('/api/dashboard/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    
+
     // Get user profile to determine role
     const profile = await profilesCollection.findOne({ userId });
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
-    
+
     let stats = {};
-    
+
     if (profile.role === 'migrant') {
       const [requests, sessions, documents] = await Promise.all([
         migrantRequestsCollection.countDocuments({ migrantId: userId }),
         guideSessionsCollection.countDocuments({ migrantId: userId }),
         documentsCollection.countDocuments({ userId })
       ]);
-      
+
       stats = { requests, sessions, documents };
     } else if (profile.role === 'guide') {
       const [sessions, reviews, clients] = await Promise.all([
@@ -466,15 +849,15 @@ app.get('/api/dashboard/:userId', async (req, res) => {
         reviewsCollection.countDocuments({ guideId: userId }),
         guideSessionsCollection.distinct('migrantId', { guideId: userId })
       ]);
-      
-      stats = { 
-        sessions, 
-        reviews, 
+
+      stats = {
+        sessions,
+        reviews,
         clients: clients.length,
         rating: profile.rating || 0
       };
     }
-    
+
     res.json(stats);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
@@ -491,6 +874,39 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
+
+// Create a guide profile from current user
+app.post('/api/create-guide-profile', async (req, res) => {
+  try {
+    const { userId, fullName, email, specialization, residenceCountry, hourlyRate } = req.body;
+
+    const guideProfile = {
+      userId: userId,
+      fullName: fullName,
+      email: email,
+      role: 'guide',
+      specialization: specialization || 'General Consultation',
+      residenceCountry: residenceCountry || 'Canada',
+      targetCountries: [residenceCountry || 'Canada'],
+      expertiseAreas: ['Immigration', 'Visa Process'],
+      rating: 4.5,
+      totalReviews: 0,
+      hourlyRate: hourlyRate || 50,
+      languages: ['English'],
+      yearsExperience: '5+ years',
+      availability: 'Available',
+      verifiedStatus: 'verified',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await profilesCollection.insertOne(guideProfile);
+    res.json({ success: true, profileId: result.insertedId, profile: guideProfile });
+  } catch (err) {
+    console.error('Error creating guide profile:', err);
+    res.status(500).json({ error: 'Failed to create guide profile' });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
