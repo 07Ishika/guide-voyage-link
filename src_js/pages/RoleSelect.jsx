@@ -13,17 +13,23 @@ const RoleSelection = () => {
   const { toast } = useToast();
   const { currentUser, loading, refreshUser } = useAuth();
   const [settingRole, setSettingRole] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
-    // If user has a role, redirect them
-    if (currentUser && currentUser.role) {
+    // Don't auto-redirect if we just came from logout (no user should be loaded)
+    // Only redirect if user has a role AND we're still on the role selection page AND haven't navigated yet
+    if (currentUser && currentUser.role && window.location.pathname === '/role' && !hasNavigated && !loading) {
+      console.log('🔍 RoleSelect: Auto-redirecting user with role:', currentUser.role);
+      setHasNavigated(true);
       if (currentUser.role === 'guide') {
-        navigate('/home/guide');
+        navigate('/home/guide', { replace: true });
       } else {
-        navigate('/home'); // Migrants go to home page first
+        navigate('/home', { replace: true }); // Migrants go to home page first
       }
+    } else if (window.location.pathname === '/role' && !currentUser && !loading) {
+      console.log('🔍 RoleSelect: On role page with no user - staying on role selection');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, hasNavigated, loading]);
 
   const handleRoleSelection = async (role) => {
     if (!currentUser) {
@@ -52,13 +58,14 @@ const RoleSelection = () => {
         });
 
         // Refresh user data in context
-        refreshUser();
+        await refreshUser();
 
-        // Redirect based on role
+        // Set navigation flag and redirect based on role
+        setHasNavigated(true);
         if (role === 'guide') {
-          navigate('/home/guide');
+          navigate('/home/guide', { replace: true });
         } else {
-          navigate('/home'); // Migrants go to home page first
+          navigate('/home', { replace: true }); // Migrants go to home page first
         }
       } else {
         toast({

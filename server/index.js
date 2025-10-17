@@ -1,12 +1,15 @@
 // Basic Express server setup for MongoDB connection
 
 const express = require('express');
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient, ObjectId, GridFSBucket } = require('mongodb');
 const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 
@@ -20,8 +23,8 @@ app.use(cors({
 app.use(express.json());
 app.use(session({
   secret: 'your-session-secret',
-  resave: true,
-  saveUninitialized: true,
+  resave: false, // Don't save session if unmodified
+  saveUninitialized: false, // Don't create session until something stored
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/voyagery',
     touchAfter: 24 * 3600 // lazy session update
@@ -36,6 +39,32 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common document types
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, JPG, PNG, DOC, and DOCX files are allowed.'), false);
+    }
+  }
+});
+
 
 // MongoDB connection URI (update with your credentials)
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/voyagery';
@@ -48,6 +77,7 @@ let messagesCollection;
 let documentsCollection;
 let reviewsCollection;
 let notificationsCollection;
+let gridFSBucket;
 
 MongoClient.connect(uri, { useUnifiedTopology: true })
   .then(client => {
@@ -60,7 +90,11 @@ MongoClient.connect(uri, { useUnifiedTopology: true })
     documentsCollection = db.collection('documents');
     reviewsCollection = db.collection('reviews');
     notificationsCollection = db.collection('notifications');
-    console.log('Connected to MongoDB with all collections initialized');
+    
+    // Initialize GridFS for file storage
+    gridFSBucket = new GridFSBucket(db, { bucketName: 'uploads' });
+    
+    console.log('Connected to MongoDB with all collections and GridFS initialized');
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -435,15 +469,26 @@ app.get('/auth/logout', (req, res) => {
 });
 
 // ==================== PROFILES API ====================
-// Get user profile
+// Get user profile with documents
 app.get('/api/profile/:userId', async (req, res) => {
   try {
     const profile = await profilesCollection.findOne({ userId: req.params.userId });
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
+
+    // Get user's documents
+    const documents = await documentsCollection
+      .find({ userId: req.params.userId })
+      .sort({ uploadedAt: -1 })
+      .toArray();
+
+    // Add documents to profile
+    profile.documents = documents;
+
     res.json(profile);
   } catch (err) {
+    console.error('Fetch profile error:', err);
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
@@ -452,14 +497,80 @@ app.get('/api/profile/:userId', async (req, res) => {
 app.post('/api/profile', async (req, res) => {
   try {
     const { userId, ...profileData } = req.body;
+    
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Prepare profile data
+    const updateData = {
+      ...profileData,
+      updatedAt: new Date()
+    };
+
+    // If this is a new profile, add createdAt
+    const existingProfile = await profilesCollection.findOne({ userId });
+    if (!existingProfile) {
+      updateData.createdAt = new Date();
+    }
+
     const result = await profilesCollection.updateOne(
       { userId },
-      { $set: { ...profileData, updatedAt: new Date() } },
+      { $set: updateData },
       { upsert: true }
     );
-    res.json({ success: true, result });
+
+    // Get the updated profile with documents
+    const updatedProfile = await profilesCollection.findOne({ userId });
+    const documents = await documentsCollection
+      .find({ userId })
+      .sort({ uploadedAt: -1 })
+      .toArray();
+    
+    updatedProfile.documents = documents;
+
+    res.json({ 
+      success: true, 
+      profile: updatedProfile,
+      upserted: result.upsertedCount > 0,
+      modified: result.modifiedCount > 0
+    });
   } catch (err) {
+    console.error('Save profile error:', err);
     res.status(500).json({ error: 'Failed to save profile' });
+  }
+});
+
+// Update profile verification status (for admin use)
+app.patch('/api/profile/:userId/verification', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status, notes } = req.body;
+
+    if (!['pending', 'verified', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid verification status' });
+    }
+
+    const updateData = {
+      verificationStatus: status,
+      verificationNotes: notes || '',
+      verificationUpdatedAt: new Date()
+    };
+
+    const result = await profilesCollection.updateOne(
+      { userId },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    res.json({ success: true, message: 'Verification status updated' });
+  } catch (err) {
+    console.error('Update verification error:', err);
+    res.status(500).json({ error: 'Failed to update verification status' });
   }
 });
 
@@ -664,17 +775,75 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // ==================== DOCUMENTS API ====================
-// Upload document
-app.post('/api/documents', async (req, res) => {
+// Upload document with file
+app.post('/api/documents/upload', upload.single('file'), async (req, res) => {
   try {
-    const documentData = {
-      ...req.body,
-      uploadedAt: new Date(),
-      status: 'pending'
-    };
-    const result = await documentsCollection.insertOne(documentData);
-    res.json({ success: true, documentId: result.insertedId });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const { userId, documentType, country, description } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Create a unique filename
+    const filename = `${userId}_${documentType}_${Date.now()}_${req.file.originalname}`;
+    
+    // Upload file to GridFS
+    const uploadStream = gridFSBucket.openUploadStream(filename, {
+      metadata: {
+        userId,
+        documentType,
+        country,
+        originalName: req.file.originalname,
+        mimetype: req.file.mimetype,
+        uploadedAt: new Date()
+      }
+    });
+
+    // Write file buffer to GridFS
+    uploadStream.end(req.file.buffer);
+
+    uploadStream.on('finish', async () => {
+      try {
+        // Save document metadata to documents collection
+        const documentData = {
+          userId,
+          fileId: uploadStream.id,
+          filename,
+          originalName: req.file.originalname,
+          documentType,
+          country,
+          description: description || '',
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          uploadedAt: new Date(),
+          status: 'pending'
+        };
+
+        const result = await documentsCollection.insertOne(documentData);
+        
+        res.json({ 
+          success: true, 
+          documentId: result.insertedId,
+          fileId: uploadStream.id,
+          filename: filename
+        });
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        res.status(500).json({ error: 'Failed to save document metadata' });
+      }
+    });
+
+    uploadStream.on('error', (error) => {
+      console.error('GridFS upload error:', error);
+      res.status(500).json({ error: 'Failed to upload file' });
+    });
+
   } catch (err) {
+    console.error('Document upload error:', err);
     res.status(500).json({ error: 'Failed to upload document' });
   }
 });
@@ -689,7 +858,71 @@ app.get('/api/documents/:userId', async (req, res) => {
 
     res.json(documents);
   } catch (err) {
+    console.error('Fetch documents error:', err);
     res.status(500).json({ error: 'Failed to fetch documents' });
+  }
+});
+
+// Download document file
+app.get('/api/documents/download/:fileId', async (req, res) => {
+  try {
+    const fileId = new ObjectId(req.params.fileId);
+    
+    // Find file metadata
+    const file = await gridFSBucket.find({ _id: fileId }).toArray();
+    
+    if (!file || file.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const fileInfo = file[0];
+    
+    // Set appropriate headers
+    res.set({
+      'Content-Type': fileInfo.metadata.mimetype,
+      'Content-Disposition': `attachment; filename="${fileInfo.metadata.originalName}"`,
+      'Content-Length': fileInfo.length
+    });
+
+    // Stream file from GridFS
+    const downloadStream = gridFSBucket.openDownloadStream(fileId);
+    downloadStream.pipe(res);
+
+    downloadStream.on('error', (error) => {
+      console.error('Download stream error:', error);
+      res.status(500).json({ error: 'Failed to download file' });
+    });
+
+  } catch (err) {
+    console.error('Download error:', err);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+// Delete document
+app.delete('/api/documents/:documentId', async (req, res) => {
+  try {
+    const documentId = new ObjectId(req.params.documentId);
+    
+    // Find document to get fileId
+    const document = await documentsCollection.findOne({ _id: documentId });
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Delete file from GridFS
+    if (document.fileId) {
+      await gridFSBucket.delete(new ObjectId(document.fileId));
+    }
+
+    // Delete document metadata
+    await documentsCollection.deleteOne({ _id: documentId });
+
+    res.json({ success: true, message: 'Document deleted successfully' });
+  } catch (err) {
+    console.error('Delete document error:', err);
+    res.status(500).json({ error: 'Failed to delete document' });
   }
 });
 

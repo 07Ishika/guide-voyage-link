@@ -111,8 +111,12 @@ export const Header = () => {
                     variant="ghost" 
                     className="text-muted-foreground hover:text-primary"
                     onClick={async () => {
+                      console.log('🔍 Header: Logout clicked');
                       await logout();
-                      window.location.href = '/';
+                      // Small delay to ensure logout completes
+                      setTimeout(() => {
+                        window.location.href = '/role';
+                      }, 100);
                     }}
                   >
                     Logout
@@ -187,8 +191,12 @@ export const Header = () => {
                       variant="ghost" 
                       className="w-full text-muted-foreground hover:text-primary"
                       onClick={async () => {
+                        console.log('🔍 Header: Mobile logout clicked');
                         await logout();
-                        window.location.href = '/';
+                        // Small delay to ensure logout completes
+                        setTimeout(() => {
+                          window.location.href = '/role';
+                        }, 100);
                       }}
                     >
                       Logout

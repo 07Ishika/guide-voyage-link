@@ -93,10 +93,54 @@ class ApiService {
     return this.fetchData(`/documents/${userId}`);
   }
 
-  async uploadDocument(documentData) {
-    return this.fetchData('/documents', {
-      method: 'POST',
-      body: JSON.stringify(documentData),
+  async uploadDocument(file, documentData) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', documentData.userId);
+    formData.append('documentType', documentData.documentType);
+    formData.append('country', documentData.country);
+    if (documentData.description) {
+      formData.append('description', documentData.description);
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include', // Include cookies for session
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Document upload error:', error);
+      throw error;
+    }
+  }
+
+  async downloadDocument(fileId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/download/${fileId}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response; // Return the response for blob handling
+    } catch (error) {
+      console.error('Document download error:', error);
+      throw error;
+    }
+  }
+
+  async deleteDocument(documentId) {
+    return this.fetchData(`/documents/${documentId}`, {
+      method: 'DELETE',
     });
   }
 

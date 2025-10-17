@@ -1,67 +1,76 @@
-// Script to clean up duplicate sessions and sync with migrant_requests
-
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/voyagery';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/voyagery';
 
 async function cleanupSessions() {
-  const client = new MongoClient(uri);
+  const client = new MongoClient(MONGODB_URI);
   
   try {
     await client.connect();
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
     
     const db = client.db();
-    const migrantRequestsCollection = db.collection('migrant_requests');
-    const guideSessionsCollection = db.collection('guide_sessions');
     
-    // Get all migrant requests
-    const migrantRequests = await migrantRequestsCollection.find({}).toArray();
-    console.log(`\n📋 Found ${migrantRequests.length} migrant requests`);
+    // Get current session count
+    const totalSessions = await db.collection('sessions').countDocuments();
+    console.log(`📊 Total sessions before cleanup: ${totalSessions}`);
     
-    // Get all guide sessions
-    const guideSessions = await guideSessionsCollection.find({}).toArray();
-    console.log(`📋 Found ${guideSessions.length} guide sessions`);
+    // Find sessions without user data (empty sessions)
+    const emptySessions = await db.collection('sessions').find({
+      $or: [
+        { 'session': { $not: { $regex: 'passport' } } },
+        { 'session': { $regex: '"passport":\\s*{}' } }
+      ]
+    }).toArray();
     
-    // Clear all guide sessions (we'll recreate from migrant_requests)
-    await guideSessionsCollection.deleteMany({});
-    console.log('🗑️ Cleared all guide sessions');
+    console.log(`🗑️  Empty sessions found: ${emptySessions.length}`);
     
-    // Create guide sessions from migrant requests
-    for (const request of migrantRequests) {
-      const sessionData = {
-        guideId: request.targetGuideId || request.guideId,
-        migrantId: request.migrantId,
-        migrantName: request.migrantName || 'Unknown Migrant',
-        migrantEmail: request.migrantEmail || '',
-        guideName: request.guideName || 'Unknown Guide',
-        title: request.title || 'Migration Consultation',
-        purpose: request.description || request.purpose || 'General consultation',
-        urgency: request.urgency || 'medium',
-        budget: request.budget || 'Not specified',
-        timeline: request.timeline || 'Flexible',
-        preferredTime: request.preferredTime || 'Flexible',
-        specificQuestions: request.specificQuestions || '',
-        requestStatus: 'pending',
-        status: 'pending',
-        createdAt: request.createdAt || new Date(),
-        updatedAt: new Date()
-      };
-      
-      await guideSessionsCollection.insertOne(sessionData);
-      console.log(`✅ Created session for: ${sessionData.migrantName} → ${sessionData.guideName}`);
+    // Find sessions with user data (active sessions)
+    const activeSessions = await db.collection('sessions').find({
+      'session': { $regex: '"passport":\\s*{\\s*"user"' }
+    }).toArray();
+    
+    console.log(`✅ Active sessions found: ${activeSessions.length}`);
+    
+    if (activeSessions.length > 0) {
+      console.log('\n👤 Active sessions:');
+      activeSessions.forEach((session, index) => {
+        try {
+          const sessionData = JSON.parse(session.session);
+          console.log(`   ${index + 1}. User ID: ${sessionData.passport?.user || 'Unknown'}`);
+        } catch (e) {
+          console.log(`   ${index + 1}. Could not parse session data`);
+        }
+      });
     }
     
-    console.log(`\n🎯 Synchronized ${migrantRequests.length} sessions with migrant requests`);
+    // Delete empty sessions
+    if (emptySessions.length > 0) {
+      const result = await db.collection('sessions').deleteMany({
+        $or: [
+          { 'session': { $not: { $regex: 'passport' } } },
+          { 'session': { $regex: '"passport":\\s*{}' } }
+        ]
+      });
+      
+      console.log(`\n🗑️  Deleted ${result.deletedCount} empty sessions`);
+    }
+    
+    // Get final session count
+    const finalSessions = await db.collection('sessions').countDocuments();
+    console.log(`📊 Total sessions after cleanup: ${finalSessions}`);
+    
+    console.log('\n✅ Session cleanup completed!');
+    console.log('💡 This should fix role switching between tabs');
     
   } catch (error) {
-    console.error('Error cleaning up sessions:', error);
+    console.error('❌ Error during cleanup:', error);
   } finally {
     await client.close();
-    console.log('\nDatabase connection closed');
+    console.log('\n✅ Disconnected from MongoDB');
   }
 }
 
-// Run the function
-cleanupSessions().catch(console.error);
+// Run the cleanup
+cleanupSessions();

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import apiService from '../services/api'
 import { useApiData, useApiMutation } from '../hooks/useApi'
+import DocumentUpload from '../components/DocumentUpload'
 import {
   User,
   Mail,
@@ -451,40 +452,7 @@ const Profile = () => {
     resetSave();
   }
 
-  const handleDocumentUpload = async (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
 
-    try {
-      // For now, we'll simulate file upload by adding to the documents list
-      // In a real app, you'd upload to a file storage service
-      const newDocuments = files.map(file => ({
-        name: file.name,
-        type: formData.documentType || 'document',
-        fileType: file.type,
-        size: file.size,
-        country: formData.documentCountry || 'Unknown',
-        uploadedAt: new Date().toISOString(),
-        status: 'pending' // All new uploads start as pending
-      }));
-
-      // Update the profile data with new documents
-      const updatedDocuments = [...(finalProfileData.verificationDocuments || []), ...newDocuments];
-      
-      setFormData({
-        ...formData,
-        verificationDocuments: updatedDocuments
-      });
-
-      // Show success message
-      console.log('Documents uploaded successfully:', newDocuments);
-      
-      // Reset file input
-      event.target.value = '';
-    } catch (error) {
-      console.error('Failed to upload documents:', error);
-    }
-  }
 
   const selectedMentor = profileData ? mentors.find((m) => m.id === finalProfileData.mentor_match) : null
 
@@ -804,153 +772,16 @@ const Profile = () => {
                           </div>
                         </div>
                         
-                        {/* Document Upload Section - Only visible when editing */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-md font-semibold text-foreground">Citizenship Documents</h4>
-                            {isEditing && (
-                              <button 
-                                onClick={() => document.getElementById('document-upload').click()}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-                              >
-                                <Upload className="w-4 h-4 inline mr-2" />
-                                Upload Document
-                              </button>
-                            )}
-                          </div>
-                          
-                          {isEditing && (
-                            <>
-                              <input
-                                id="document-upload"
-                                type="file"
-                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                multiple
-                                className="hidden"
-                                onChange={(e) => handleDocumentUpload(e)}
-                              />
-                              
-                              {/* Document Type and Country Selector */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-sm font-medium mb-2 text-foreground">
-                                    Document Type
-                                  </label>
-                                  <select 
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background border-border"
-                                    value={formData.documentType || ''}
-                                    onChange={(e) => setFormData({...formData, documentType: e.target.value})}
-                                  >
-                                    <option value="">Select document type</option>
-                                    <option value="passport">Passport</option>
-                                    <option value="visa">Visa</option>
-                                    <option value="citizenship">Citizenship Certificate</option>
-                                    <option value="birth_certificate">Birth Certificate</option>
-                                    <option value="driver_license">Driver's License</option>
-                                    <option value="other">Other</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium mb-2 text-foreground">
-                                    Country
-                                  </label>
-                                  <select 
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-background border-border"
-                                    value={formData.documentCountry || ''}
-                                    onChange={(e) => setFormData({...formData, documentCountry: e.target.value})}
-                                  >
-                                    <option value="">Select country</option>
-                                    <option value="Canada">Canada</option>
-                                    <option value="USA">United States</option>
-                                    <option value="UK">United Kingdom</option>
-                                    <option value="Australia">Australia</option>
-                                    <option value="Germany">Germany</option>
-                                    <option value="France">France</option>
-                                    <option value="India">India</option>
-                                    <option value="China">China</option>
-                                    <option value="other">Other</option>
-                                  </select>
-                                </div>
-                              </div>
-                            </>
-                          )}
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {(finalProfileData.verificationDocuments || []).map((doc, index) => (
-                              <div key={index} className="flex items-center justify-between p-3 rounded bg-muted/50 border border-border">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="w-4 h-4 text-blue-500" />
-                                  <div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-sm font-medium text-foreground">{doc.name || doc}</span>
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        doc.status === 'verified' 
-                                          ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
-                                          : doc.status === 'rejected'
-                                          ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
-                                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                                      }`}>
-                                        {doc.status === 'verified' ? '✓ Verified' : 
-                                         doc.status === 'rejected' ? '✗ Rejected' : 
-                                         '⏳ Pending'}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {doc.type || 'Document'} • {doc.country || 'Citizenship'}
-                                    </p>
-                                    {doc.uploadedAt && (
-                                      <p className="text-xs text-muted-foreground">
-                                        Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                {isEditing && (
-                                  <div className="flex items-center space-x-2">
-                                    <button className="text-blue-500 hover:text-blue-600 text-sm">
-                                      View
-                                    </button>
-                                    <button className="text-red-500 hover:text-red-600 text-sm">
-                                      Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          
-                          {(!finalProfileData.verificationDocuments || finalProfileData.verificationDocuments.length === 0) && isEditing && (
-                            <div className="text-center py-6 border-2 border-dashed border-border rounded-lg">
-                              <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Upload your citizenship documents (passport, visa, etc.)
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Supported formats: PDF, JPG, PNG, DOC, DOCX
-                              </p>
-                            </div>
-                          )}
-                          
-                          {(!finalProfileData.verificationDocuments || finalProfileData.verificationDocuments.length === 0) && !isEditing && (
-                            <div className="text-center py-6 border border-border rounded-lg bg-muted/30">
-                              <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                              <p className="text-sm text-muted-foreground mb-2">
-                                No documents uploaded yet
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Click "Edit Profile" to upload citizenship documents
-                              </p>
-                            </div>
-                          )}
-                          
-                          {finalProfileData.verifiedStatus === 'pending' && (
-                            <div className="p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
-                              <p className="text-sm text-yellow-200">
-                                📋 <strong>Verification Required:</strong> Please upload documents for all countries you claim citizenship in to complete verification.
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                        {/* Document Upload Section */}
+                        <DocumentUpload 
+                          userId={actualUserId}
+                          isEditing={isEditing}
+                          onUploadSuccess={(document) => {
+                            // Refresh profile data after successful upload
+                            refetchProfile();
+                          }}
+                          existingDocuments={finalProfileData.documents || []}
+                        />
 
                         {finalProfileData.verified_status === 'verified' && (
                           <div className="space-y-2">

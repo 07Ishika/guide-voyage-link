@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { CalculatorProvider } from "./contexts/CalculatorContext";
 import { AuthProvider } from "./contexts/AuthContext";
+
 import CostCalculatorWidget from "./components/CostCalculatorWidget";
 import FloatingCalculatorButton from "./components/FloatingCalculatorButton";
 import Index from "./pages/Index";
@@ -25,6 +26,8 @@ import NotFound from "./pages/NotFound";
 import ManualLogin from "./pages/ManualLogin";
 import DashboardGuide from "./pages/DashboardGuide";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+
 
 const queryClient = new QueryClient();
 
@@ -117,6 +120,8 @@ const AppShell = () => {
       {/* Global Calculator Components */}
       {showCalculatorButton && <FloatingCalculatorButton />}
       <CostCalculatorWidget />
+      
+
     </div>
   );
 };
