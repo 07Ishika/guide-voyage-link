@@ -1,0 +1,10 @@
+{
+  "name": "voyagery-frontend",
+  "version": "1.0.0",
+  "description": "Voyagery Frontend",
+  "scripts": {
+    "build": "echo 'Static files ready'",
+    "start": "echo 'Static site'"
+  },
+  "dependencies": {}
+}

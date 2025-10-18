@@ -94,9 +94,13 @@ MongoClient.connect(uri, { useUnifiedTopology: true })
     // Initialize GridFS for file storage
     gridFSBucket = new GridFSBucket(db, { bucketName: 'uploads' });
     
-    console.log('Connected to MongoDB with all collections and GridFS initialized');
+    console.log('✅ Connected to MongoDB with all collections and GridFS initialized');
   })
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+    console.log('⚠️  Server will continue without database functionality');
+    // Server continues to run for API health checks
+  });
 
 // Passport config
 passport.serializeUser((user, done) => {
