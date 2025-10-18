@@ -17,7 +17,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5000"],
+  origin: true, // Allow all origins for now
   credentials: true
 }));
 app.use(express.json());
@@ -1139,6 +1139,38 @@ app.post('/api/create-guide-profile', async (req, res) => {
     console.error('Error creating guide profile:', err);
     res.status(500).json({ error: 'Failed to create guide profile' });
   }
+});
+
+// Root route for health check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Voyagery API Server is running!', 
+    status: 'healthy',
+    endpoints: {
+      auth: '/auth/google',
+      api: '/api/*',
+      health: '/'
+    }
+  });
+});
+
+// API health check
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Voyagery API is working!',
+    status: 'healthy',
+    version: '1.0.0',
+    availableEndpoints: [
+      'GET /api/profile/:userId',
+      'POST /api/profile',
+      'GET /api/migrant-requests',
+      'POST /api/migrant-requests',
+      'GET /api/guide-sessions',
+      'POST /api/guide-sessions',
+      'GET /api/documents/:userId',
+      'POST /api/documents/upload'
+    ]
+  });
 });
 
 app.listen(port, () => {

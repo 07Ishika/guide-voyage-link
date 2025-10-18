@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: voyagery-backend
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: https://your-app-name.onrender.com/auth/google/callback
+      - key: PORT
+        value: 10000

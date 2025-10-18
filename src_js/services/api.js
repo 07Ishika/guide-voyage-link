@@ -1,5 +1,6 @@
 // API service for Voyagery backend communication
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://guide-voyage-link-1.onrender.com/api';
+const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL || 'https://guide-voyage-link-1.onrender.com';
 
 class ApiService {
   // Generic fetch method with error handling
@@ -197,24 +198,7 @@ class ApiService {
   // ==================== AUTHENTICATION API ====================
   async getCurrentUser() {
     try {
-      const response = await fetch('http://localhost:5000/auth/user', {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Auth API Error:', error);
-      throw error;
-    }
-  }
-
-  async getCurrentUser() {
-    try {
-      const response = await fetch('http://localhost:5000/auth/user', {
+      const response = await fetch(`${AUTH_BASE_URL}/auth/user`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -235,7 +219,7 @@ class ApiService {
 
   async logout() {
     try {
-      const response = await fetch('http://localhost:5000/auth/logout', {
+      const response = await fetch(`${AUTH_BASE_URL}/auth/logout`, {
         method: 'GET',
         credentials: 'include'
       });
