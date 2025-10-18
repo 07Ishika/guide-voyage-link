@@ -17,7 +17,12 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: true, // Allow all origins for now
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:5000",
+    "https://guide-voyage-link.vercel.app",
+    /\.vercel\.app$/
+  ],
   credentials: true
 }));
 app.use(express.json());

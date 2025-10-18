@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       // If no tab user, check server session
-      const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL || 'http://localhost:5000';
+      const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL || 'https://guide-voyage-link-1.onrender.com';
       const response = await fetch(`${AUTH_BASE_URL}/auth/user`, {
         credentials: 'include'
       });
