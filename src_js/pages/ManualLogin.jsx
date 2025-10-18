@@ -28,7 +28,8 @@ const ManualLogin = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/auth/manual-login', {
+      const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL || 'https://guide-voyage-link-1.onrender.com';
+      const response = await fetch(`${AUTH_BASE_URL}/auth/manual-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
