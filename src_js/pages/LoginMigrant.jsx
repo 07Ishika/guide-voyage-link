@@ -10,7 +10,8 @@ import { useNavigate } from "react-router-dom";
 const LoginMigrant = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    fetch("http://localhost:5000/auth/user", { credentials: "include" })
+    const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL || 'https://guide-voyage-link-1.onrender.com';
+    fetch(`${AUTH_BASE_URL}/auth/user`, { credentials: "include" })
       .then((res) => res.ok ? res.json() : null)
       .then((user) => {
         if (user && user.role === "migrant") {
