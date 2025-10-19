@@ -323,20 +323,64 @@ app.get('/auth/failure', (req, res) => {
 // Demo login endpoint for testing
 app.post('/auth/demo-login', async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { role } = req.body;
 
-    // Find the user in the database
-    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!role || !['migrant', 'guide'].includes(role)) {
+      return res.status(400).json({ error: 'Valid role required (migrant or guide)' });
     }
+
+    // Find a demo user with the specified role
+    const user = await usersCollection.findOne({ role: role });
+    
+    if (!user) {
+      // If no user found, create a demo user
+      const demoUsers = {
+        migrant: {
+          googleId: `demo_migrant_${Date.now()}`,
+          displayName: 'Sarah Chen',
+          email: 'sarah@example.com',
+          photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
+          role: 'migrant',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        guide: {
+          googleId: `demo_guide_${Date.now()}`,
+          displayName: 'Dr. Michael Rodriguez',
+          email: 'michael@example.com',
+          photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael',
+          role: 'guide',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      };
+
+      const newUser = demoUsers[role];
+      const result = await usersCollection.insertOne(newUser);
+      newUser._id = result.insertedId;
+
+      // Create profile for the new user
+      await createUserProfile(newUser, role);
+
+      // Set session data
+      const userIdString = newUser._id.toString();
+      req.session.passport = { user: userIdString };
+      req.user = newUser;
+
+      console.log('✅ Demo login successful (new user):', newUser.displayName, '(Role:', newUser.role, ') ID:', userIdString);
+      res.json(newUser);
+      return;
+    }
+
+    // Ensure profile exists for existing user
+    await createUserProfile(user, role);
 
     // Set session data - ensure ObjectId is properly stored
     const userIdString = user._id.toString();
     req.session.passport = { user: userIdString };
     req.user = user;
 
-    console.log('✅ Demo login successful for:', user.displayName, '(Role:', user.role, ') ID:', userIdString);
+    console.log('✅ Demo login successful:', user.displayName, '(Role:', user.role, ') ID:', userIdString);
     res.json(user);
   } catch (err) {
     console.error('❌ Demo login error:', err);
@@ -370,11 +414,16 @@ app.post('/auth/manual-login', async (req, res) => {
     // If database is not available, use mock data for testing
     if (!usersCollection) {
       console.log('⚠️ Database not available, using mock user for testing');
+
+      // Determine role based on input - if email contains 'guide' or name contains 'guide', make them a guide
+      const inputText = (email || name || '').toLowerCase();
+      const isGuide = inputText.includes('guide') || inputText.includes('michael') || inputText.includes('rodriguez');
+
       const mockUser = {
         _id: 'mock-user-id',
-        displayName: name || 'Test User',
-        email: email || 'test@example.com',
-        role: 'guide',
+        displayName: name || (isGuide ? 'Dr. Michael Rodriguez' : 'Sarah Chen'),
+        email: email || (isGuide ? 'michael@example.com' : 'sarah@example.com'),
+        role: isGuide ? 'guide' : 'migrant',
         googleId: 'mock-google-id'
       };
 
@@ -1200,6 +1249,28 @@ app.get('/api', (req, res) => {
   });
 });
 
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+    const result = await profilesCollection.insertOne(guideProfile);
+    res.json({ success: true, profileId: result.insertedId });
+  } catch (err) {
+    console.error('❌ Error creating guide profile:', err);
+    res.status(500).json({ error: 'Failed to create guide profile' });
+  }
+});
+
+// Health check endpoint for production monitoring
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Voyagery Backend',
+    database: db ? 'Connected' : 'Disconnected'
+  });
+});
+
+// Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
