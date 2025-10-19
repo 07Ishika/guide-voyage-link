@@ -18,7 +18,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "http://localhost:5173", 
+    "http://localhost:5173",
     "http://localhost:5000",
     "https://guide-voyage-link.vercel.app",
     /\.vercel\.app$/
@@ -61,7 +61,7 @@ const upload = multer({
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
-    
+
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -95,10 +95,10 @@ MongoClient.connect(uri, { useUnifiedTopology: true })
     documentsCollection = db.collection('documents');
     reviewsCollection = db.collection('reviews');
     notificationsCollection = db.collection('notifications');
-    
+
     // Initialize GridFS for file storage
     gridFSBucket = new GridFSBucket(db, { bucketName: 'uploads' });
-    
+
     console.log('✅ Connected to MongoDB with all collections and GridFS initialized');
   })
   .catch(err => {
@@ -215,7 +215,7 @@ passport.use(new GoogleStrategy({
   try {
     let user = await usersCollection.findOne({ googleId: profile.id });
     const selectedRole = req.session.oauthRole;
-    
+
     if (!user) {
       // Create new user with role
       const newUser = {
@@ -229,7 +229,7 @@ passport.use(new GoogleStrategy({
       };
       const result = await usersCollection.insertOne(newUser);
       user = { ...newUser, _id: result.insertedId };
-      
+
       // Create profile automatically
       if (selectedRole) {
         await createUserProfile(user, selectedRole);
@@ -237,20 +237,20 @@ passport.use(new GoogleStrategy({
     } else if (!user.role && selectedRole) {
       // Update existing user with role
       await usersCollection.updateOne(
-        { googleId: profile.id }, 
-        { 
-          $set: { 
+        { googleId: profile.id },
+        {
+          $set: {
             role: selectedRole,
             updatedAt: new Date()
-          } 
+          }
         }
       );
       user.role = selectedRole;
-      
+
       // Create profile if it doesn't exist
       await createUserProfile(user, selectedRole);
     }
-    
+
     // Clean up session
     req.session.oauthRole = undefined;
     done(null, user);
@@ -367,6 +367,24 @@ app.post('/auth/manual-login', async (req, res) => {
   try {
     const { email, name } = req.body;
 
+    // If database is not available, use mock data for testing
+    if (!usersCollection) {
+      console.log('⚠️ Database not available, using mock user for testing');
+      const mockUser = {
+        _id: 'mock-user-id',
+        displayName: name || 'Test User',
+        email: email || 'test@example.com',
+        role: 'guide',
+        googleId: 'mock-google-id'
+      };
+
+      req.session.user = mockUser;
+      return res.json({
+        message: 'Login successful (mock mode)',
+        user: mockUser
+      });
+    }
+
     let query = {};
     if (email) {
       query.email = { $regex: email, $options: 'i' }; // Case insensitive
@@ -436,15 +454,15 @@ app.post('/auth/set-role', async (req, res) => {
     }
 
     const userId = req.user._id;
-    
+
     // Update user role in database
     await usersCollection.updateOne(
       { _id: userId },
-      { 
-        $set: { 
+      {
+        $set: {
           role: role,
           updatedAt: new Date()
-        } 
+        }
       }
     );
 
@@ -455,7 +473,7 @@ app.post('/auth/set-role', async (req, res) => {
     await createUserProfile(req.user, role);
 
     console.log('✅ Role set for user:', req.user.displayName, 'Role:', role);
-    
+
     res.json({
       success: true,
       user: {
@@ -506,7 +524,7 @@ app.get('/api/profile/:userId', async (req, res) => {
 app.post('/api/profile', async (req, res) => {
   try {
     const { userId, ...profileData } = req.body;
-    
+
     // Validate required fields
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
@@ -536,11 +554,11 @@ app.post('/api/profile', async (req, res) => {
       .find({ userId })
       .sort({ uploadedAt: -1 })
       .toArray();
-    
+
     updatedProfile.documents = documents;
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       profile: updatedProfile,
       upserted: result.upsertedCount > 0,
       modified: result.modifiedCount > 0
@@ -707,10 +725,10 @@ app.put('/api/guide-sessions/:sessionId', async (req, res) => {
     );
 
     console.log('✅ Session updated:', result);
-    
+
     // Get the updated session to return complete data
     const updatedSession = await guideSessionsCollection.findOne({ _id: new ObjectId(req.params.sessionId) });
-    
+
     res.json({ success: true, result, session: updatedSession });
   } catch (err) {
     console.error('❌ Error updating session:', err);
@@ -722,11 +740,11 @@ app.put('/api/guide-sessions/:sessionId', async (req, res) => {
 app.get('/api/guide-sessions/:sessionId', async (req, res) => {
   try {
     const session = await guideSessionsCollection.findOne({ _id: new ObjectId(req.params.sessionId) });
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
+
     res.json(session);
   } catch (err) {
     console.error('❌ Error fetching session:', err);
@@ -792,14 +810,14 @@ app.post('/api/documents/upload', upload.single('file'), async (req, res) => {
     }
 
     const { userId, documentType, country, description } = req.body;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
     // Create a unique filename
     const filename = `${userId}_${documentType}_${Date.now()}_${req.file.originalname}`;
-    
+
     // Upload file to GridFS
     const uploadStream = gridFSBucket.openUploadStream(filename, {
       metadata: {
@@ -833,9 +851,9 @@ app.post('/api/documents/upload', upload.single('file'), async (req, res) => {
         };
 
         const result = await documentsCollection.insertOne(documentData);
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           documentId: result.insertedId,
           fileId: uploadStream.id,
           filename: filename
@@ -876,16 +894,16 @@ app.get('/api/documents/:userId', async (req, res) => {
 app.get('/api/documents/download/:fileId', async (req, res) => {
   try {
     const fileId = new ObjectId(req.params.fileId);
-    
+
     // Find file metadata
     const file = await gridFSBucket.find({ _id: fileId }).toArray();
-    
+
     if (!file || file.length === 0) {
       return res.status(404).json({ error: 'File not found' });
     }
 
     const fileInfo = file[0];
-    
+
     // Set appropriate headers
     res.set({
       'Content-Type': fileInfo.metadata.mimetype,
@@ -912,10 +930,10 @@ app.get('/api/documents/download/:fileId', async (req, res) => {
 app.delete('/api/documents/:documentId', async (req, res) => {
   try {
     const documentId = new ObjectId(req.params.documentId);
-    
+
     // Find document to get fileId
     const document = await documentsCollection.findOne({ _id: documentId });
-    
+
     if (!document) {
       return res.status(404).json({ error: 'Document not found' });
     }
@@ -1012,19 +1030,19 @@ app.get('/api/guide-sessions/realtime/:guideId', async (req, res) => {
   try {
     const { guideId } = req.params;
     const { lastUpdate } = req.query;
-    
+
     let query = { guideId };
-    
+
     // If lastUpdate is provided, only get sessions updated after that time
     if (lastUpdate) {
       query.updatedAt = { $gt: new Date(lastUpdate) };
     }
-    
+
     const sessions = await guideSessionsCollection
       .find(query)
       .sort({ updatedAt: -1 })
       .toArray();
-    
+
     res.json({
       sessions,
       timestamp: new Date().toISOString()
@@ -1152,8 +1170,8 @@ app.post('/api/create-guide-profile', async (req, res) => {
 
 // Root route for health check
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Voyagery API Server is running!', 
+  res.json({
+    message: 'Voyagery API Server is running!',
     status: 'healthy',
     endpoints: {
       auth: '/auth/google',
