@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Demo Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Production Demo Login Test</h1>
+        
+        <div class="result info">
+            <h3>📍 Testing Against Production Backend</h3>
+            <p><strong>Backend URL:</strong> https://guide-voyage-link-1.onrender.com</p>
+            <p><strong>Endpoint:</strong> /auth/demo-login</p>
+            <p>This test verifies that demo login works with your deployed backend on Render.</p>
+        </div>
+        
+        <div>
+            <button onclick="testProductionDemo('migrant')" id="migrantBtn">
+                Test Production Migrant Demo Login
+            </button>
+            <button onclick="testProductionDemo('guide')" id="guideBtn">
+                Test Production Guide Demo Login
+            </button>
+        </div>
+        
+        <div>
+            <button onclick="checkBackendHealth()" id="healthBtn" style="background: #6c757d;">
+                Check Backend Health
+            </button>
+            <button onclick="testCORS()" id="corsBtn" style="background: #6c757d;">
+                Test CORS Configuration
+            </button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://guide-voyage-link-1.onrender.com';
+        
+        async function testProductionDemo(role) {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById(role + 'Btn');
+            
+            btn.disabled = true;
+            btn.textContent = `Testing ${role} login...`;
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/demo-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ role }),
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Production ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login Successful!</h3>
+                            <p><strong>Name:</strong> ${user.displayName}</p>
+                            <p><strong>Email:</strong> ${user.email}</p>
+                            <p><strong>Role:</strong> ${user.role}</p>
+                            <p><strong>User ID:</strong> ${user._id}</p>
+                            <p><strong>Backend:</strong> Production Render deployment ✅</p>
+                        </div>
+                    `;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Production ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login Failed</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Error:</strong> ${error.error || 'Unknown error'}</p>
+                            <p><strong>Suggestion:</strong> Check if demo users exist in production database</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Connection Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Backend URL:</strong> ${BACKEND_URL}</p>
+                        <p><strong>Possible Issues:</strong></p>
+                        <ul>
+                            <li>Backend is not running on Render</li>
+                            <li>CORS configuration blocking requests</li>
+                            <li>Network connectivity issues</li>
+                        </ul>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = `Test Production ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login`;
+            }
+        }
+        
+        async function checkBackendHealth() {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('healthBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Checking health...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Backend Health Check Passed</h3>
+                            <p><strong>Status:</strong> ${data.status || 'OK'}</p>
+                            <p><strong>Backend:</strong> Running on Render ✅</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>⚠️ Backend Health Check Failed</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p>Backend may be starting up or experiencing issues.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Backend Not Reachable</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check if the Render deployment is active.</p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Check Backend Health';
+            }
+        }
+        
+        async function testCORS() {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('corsBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing CORS...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/user`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <h3>✅ CORS Configuration Working</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p>Cross-origin requests are properly configured.</p>
+                    </div>
+                `;
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ CORS Configuration Issue</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p>The backend needs to allow requests from this domain.</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ CORS Test Completed</h3>
+                            <p>No CORS errors detected. Backend is accessible.</p>
+                        </div>
+                    `;
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test CORS Configuration';
+            }
+        }
+    </script>
+</body>
+</html>

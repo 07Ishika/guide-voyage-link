@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Demo Login Test</h1>
+        <p>Test the demo login functionality for both migrant and guide roles.</p>
+        
+        <div>
+            <button onclick="testDemoLogin('migrant')" id="migrantBtn">
+                Test Migrant Demo Login
+            </button>
+            <button onclick="testDemoLogin('guide')" id="guideBtn">
+                Test Guide Demo Login
+            </button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testDemoLogin(role) {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById(role + 'Btn');
+            
+            btn.disabled = true;
+            btn.textContent = `Testing ${role} login...`;
+            
+            try {
+                const response = await fetch('http://localhost:5000/auth/demo-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ role }),
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login Successful!</h3>
+                            <p><strong>Name:</strong> ${user.displayName}</p>
+                            <p><strong>Email:</strong> ${user.email}</p>
+                            <p><strong>Role:</strong> ${user.role}</p>
+                            <p><strong>User ID:</strong> ${user._id}</p>
+                        </div>
+                    `;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login Failed</h3>
+                            <p><strong>Error:</strong> ${error.error || 'Unknown error'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Connection Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Make sure the server is running on http://localhost:5000</p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = `Test ${role.charAt(0).toUpperCase() + role.slice(1)} Demo Login`;
+            }
+        }
+    </script>
+</body>
+</html>
