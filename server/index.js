@@ -1270,17 +1270,6 @@ app.get('/api', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-const result = await profilesCollection.insertOne(guideProfile);
-res.json({ success: true, profileId: result.insertedId });
-  } catch (err) {
-  console.error('❌ Error creating guide profile:', err);
-  res.status(500).json({ error: 'Failed to create guide profile' });
-}
-});
-
 // Health check endpoint for production monitoring
 app.get('/health', (req, res) => {
   res.json({
