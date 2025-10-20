@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Guides API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Guides API</h1>
+        
+        <div class="result info">
+            <h3>📍 Testing Guides Search Endpoint</h3>
+            <p><strong>Backend URL:</strong> https://guide-voyage-link-1.onrender.com</p>
+            <p><strong>Endpoint:</strong> /api/guides/search</p>
+            <p>This test checks if the guides search API is working properly.</p>
+        </div>
+        
+        <div>
+            <button onclick="testGuidesAPI()" id="guidesBtn">
+                Test Guides Search API
+            </button>
+            <button onclick="testHealthAPI()" id="healthBtn" style="background: #6c757d;">
+                Test Backend Health
+            </button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://guide-voyage-link-1.onrender.com';
+        
+        async function testGuidesAPI() {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('guidesBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing guides API...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/guides/search`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const guides = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Guides API Working!</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Found Guides:</strong> ${guides.length}</p>
+                            <p><strong>Response:</strong></p>
+                            <pre>${JSON.stringify(guides, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Guides API Failed</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Response:</strong></p>
+                            <pre>${errorText}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Connection Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Possible Issues:</strong></p>
+                        <ul>
+                            <li>Backend is not running on Render</li>
+                            <li>CORS configuration blocking requests</li>
+                            <li>Network connectivity issues</li>
+                        </ul>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Guides Search API';
+            }
+        }
+        
+        async function testHealthAPI() {
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('healthBtn');
+            
+            btn.disabled = true;
+            btn.textContent = 'Testing health...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Backend Health Check Passed</h3>
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            <p><strong>Database:</strong> ${data.database}</p>
+                            <p><strong>Service:</strong> ${data.service}</p>
+                            <p><strong>Timestamp:</strong> ${data.timestamp}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>⚠️ Backend Health Check Failed</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Backend Not Reachable</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check if the Render deployment is active.</p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Backend Health';
+            }
+        }
+    </script>
+</body>
+</html>

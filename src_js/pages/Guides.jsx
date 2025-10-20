@@ -27,9 +27,15 @@ const Guides = () => {
   
   // Fetch real guide data from database
   const { data: guides = [], loading: guidesLoading, error: guidesError } = useApiData(
-    () => apiService.searchGuides(),
+    () => {
+      console.log('🔍 Fetching guides from API...');
+      return apiService.searchGuides();
+    },
     []
   );
+
+  // Debug logging
+  console.log('📊 Guides data:', { guides, loading: guidesLoading, error: guidesError });
 
   // Remove mock data - use only real guides from database
   const mockGuides = [
