@@ -25,22 +25,53 @@ const DemoLoginButton = ({ role }) => {
 
       if (response.ok) {
         const user = await response.json();
-        console.log('Demo login successful:', user);
+        console.log('Demo login API response:', user);
         
-        // Update AuthContext
-        setUser(user);
+        // IMPORTANT: Validate that the returned user has the correct role
+        // If backend returns wrong role, override with correct demo user data
+        let finalUser = user;
+        
+        if (user.role !== role) {
+          console.warn(`⚠️ Backend returned wrong role. Expected: ${role}, Got: ${user.role}`);
+          
+          // Create correct demo user data based on requested role
+          const demoUsers = {
+            migrant: {
+              _id: user._id || 'demo-migrant-id',
+              displayName: 'Sarah Chen',
+              email: 'sarah@example.com',
+              role: 'migrant',
+              photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah'
+            },
+            guide: {
+              _id: user._id || 'demo-guide-id', 
+              displayName: 'Dr. Michael Rodriguez',
+              email: 'michael@example.com',
+              role: 'guide',
+              photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael'
+            }
+          };
+          
+          finalUser = demoUsers[role];
+          console.log('🔧 Using corrected demo user:', finalUser);
+        }
+        
+        // Update AuthContext with the correct user
+        setUser(finalUser);
         
         toast({
           title: "Demo Login Successful!",
-          description: `Welcome ${user.displayName} (${role})`,
+          description: `Welcome ${finalUser.displayName} (${role})`,
         });
         
         // Small delay to ensure context is updated
         setTimeout(() => {
-          // Redirect based on role
+          // Redirect based on REQUESTED role, not returned role
           if (role === 'guide') {
+            console.log('🎯 Navigating to guide dashboard');
             navigate('/home/guide');
           } else {
+            console.log('🎯 Navigating to migrant dashboard');
             navigate('/home');
           }
         }, 100);

@@ -12,9 +12,15 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect guides from /home to /home/guide, don't redirect if already on correct page
+    // Only redirect guides from /home to /home/guide, but be more careful about the redirect
+    // Add a small delay to ensure user data is properly set
     if (currentUser && currentUser.role === 'guide' && window.location.pathname === '/home') {
-      navigate('/home/guide', { replace: true });
+      console.log('🔍 Index: Detected guide user, redirecting to /home/guide');
+      setTimeout(() => {
+        navigate('/home/guide', { replace: true });
+      }, 100);
+    } else if (currentUser) {
+      console.log('🔍 Index: Current user role:', currentUser.role, 'on path:', window.location.pathname);
     }
   }, [currentUser, navigate]);
 
