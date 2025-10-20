@@ -329,14 +329,25 @@ app.post('/auth/demo-login', async (req, res) => {
       return res.status(400).json({ error: 'Valid role required (migrant or guide)' });
     }
 
-    // Find a demo user with the specified role
-    const user = await usersCollection.findOne({ role: role });
+    // Define specific demo user emails for each role
+    const demoEmails = {
+      migrant: 'sarah@example.com',
+      guide: 'michael@example.com'
+    };
+
+    // First try to find the specific demo user by email and role
+    let user = await usersCollection.findOne({ 
+      email: demoEmails[role],
+      role: role 
+    });
     
     if (!user) {
-      // If no user found, create a demo user
+      console.log(`🔍 Demo user not found for ${role}, creating new one...`);
+      
+      // Create specific demo user for the role
       const demoUsers = {
         migrant: {
-          googleId: `demo_migrant_${Date.now()}`,
+          googleId: `demo_migrant_production_${Date.now()}`,
           displayName: 'Sarah Chen',
           email: 'sarah@example.com',
           photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
@@ -345,7 +356,7 @@ app.post('/auth/demo-login', async (req, res) => {
           updatedAt: new Date()
         },
         guide: {
-          googleId: `demo_guide_${Date.now()}`,
+          googleId: `demo_guide_production_${Date.now()}`,
           displayName: 'Dr. Michael Rodriguez',
           email: 'michael@example.com',
           photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael',
@@ -370,6 +381,16 @@ app.post('/auth/demo-login', async (req, res) => {
       console.log('✅ Demo login successful (new user):', newUser.displayName, '(Role:', newUser.role, ') ID:', userIdString);
       res.json(newUser);
       return;
+    }
+
+    console.log(`🔍 Found existing demo user: ${user.displayName} (${user.email}) - Role: ${user.role}`);
+
+    // Double-check the user has the correct role
+    if (user.role !== role) {
+      console.log(`⚠️  Role mismatch! Expected: ${role}, Found: ${user.role}`);
+      return res.status(400).json({ 
+        error: `Demo user role mismatch. Expected ${role} but found ${user.role}` 
+      });
     }
 
     // Ensure profile exists for existing user
