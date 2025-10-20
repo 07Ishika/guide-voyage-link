@@ -336,14 +336,14 @@ app.post('/auth/demo-login', async (req, res) => {
     };
 
     // First try to find the specific demo user by email and role
-    let user = await usersCollection.findOne({ 
+    let user = await usersCollection.findOne({
       email: demoEmails[role],
-      role: role 
+      role: role
     });
-    
+
     if (!user) {
       console.log(`🔍 Demo user not found for ${role}, creating new one...`);
-      
+
       // Create specific demo user for the role
       const demoUsers = {
         migrant: {
@@ -388,8 +388,8 @@ app.post('/auth/demo-login', async (req, res) => {
     // Double-check the user has the correct role
     if (user.role !== role) {
       console.log(`⚠️  Role mismatch! Expected: ${role}, Found: ${user.role}`);
-      return res.status(400).json({ 
-        error: `Demo user role mismatch. Expected ${role} but found ${user.role}` 
+      return res.status(400).json({
+        error: `Demo user role mismatch. Expected ${role} but found ${user.role}`
       });
     }
 
@@ -1273,18 +1273,18 @@ app.get('/api', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-    const result = await profilesCollection.insertOne(guideProfile);
-    res.json({ success: true, profileId: result.insertedId });
+const result = await profilesCollection.insertOne(guideProfile);
+res.json({ success: true, profileId: result.insertedId });
   } catch (err) {
-    console.error('❌ Error creating guide profile:', err);
-    res.status(500).json({ error: 'Failed to create guide profile' });
-  }
+  console.error('❌ Error creating guide profile:', err);
+  res.status(500).json({ error: 'Failed to create guide profile' });
+}
 });
 
 // Health check endpoint for production monitoring
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     service: 'Voyagery Backend',
     database: db ? 'Connected' : 'Disconnected'
