@@ -29,8 +29,8 @@ const Guides = () => {
   const guidesLoading = false;
   const guidesError = "Backend temporarily unavailable - showing demo guides";
 
-  // Debug logging
-  console.log('📊 Using mock guides due to backend issues');
+  // Debug logging - using mock guides for demo
+  console.log('📊 Using mock guides due to backend issues - deployment fix');
 
   // Remove mock data - use only real guides from database
   const mockGuides = [
