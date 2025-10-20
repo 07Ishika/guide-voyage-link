@@ -76,7 +76,12 @@ const Guides = () => {
   ];
 
   // Use real guides from database, with fallback to mock data if API fails
-  const displayGuides = (guides && guides.length > 0) ? guides : (guidesError ? mockGuides : []);
+  const displayGuides = (() => {
+    if (guidesLoading) return [];
+    if (guides && guides.length > 0) return guides;
+    if (guidesError) return mockGuides;
+    return [];
+  })();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("All");
@@ -203,21 +208,20 @@ const Guides = () => {
           </div>
         )}
 
-        {/* Error State - but still show mock guides */}
-        {guidesError && displayGuides.length > 0 && (
+        {/* Error State - show warning but display mock guides */}
+        {guidesError && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="text-yellow-800 text-sm">
-              <strong>Note:</strong> Showing demo guides. API connection issue: {guidesError}
+              <strong>Demo Mode:</strong> Showing sample guides. Backend connection issue: {guidesError}
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                size="sm" 
+                className="ml-4"
+              >
+                Retry Connection
+              </Button>
             </div>
-          </div>
-        )}
-        
-        {guidesError && displayGuides.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-red-500 mb-4">Error loading guides: {guidesError}</div>
-            <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
-              Retry
-            </Button>
           </div>
         )}
 
