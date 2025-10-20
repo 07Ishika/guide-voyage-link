@@ -6,7 +6,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "cd server && node index.js",
-    "build": "echo 'Backend only - no build needed'",
+    "build": "cd server && npm install",
     "dev": "vite",
     "preview": "vite preview",
     "server": "cd server && node index.js"
