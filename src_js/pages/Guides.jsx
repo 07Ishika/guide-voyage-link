@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,20 +17,23 @@ import {
   Award,
   Users
 } from "lucide-react";
-// Temporarily disabled API imports due to backend issues
-// import apiService from "../services/api";
-// import { useApiData } from "../hooks/useApi";
+import apiService from "../services/api";
+import { useApiData } from "../hooks/useApi";
 
 const Guides = () => {
   const navigate = useNavigate();
   
-  // Temporarily disable API call due to CORS/backend issues - show mock guides
-  const guides = [];
-  const guidesLoading = false;
-  const guidesError = "Backend temporarily unavailable - showing demo guides";
+  // Fetch real guide data from database
+  const { data: guides = [], loading: guidesLoading, error: guidesError } = useApiData(
+    () => {
+      console.log('🔍 Fetching guides from API...');
+      return apiService.searchGuides();
+    },
+    []
+  );
 
-  // Debug logging - using mock guides for demo
-  console.log('📊 Using mock guides due to backend issues - deployment fix');
+  // Debug logging
+  console.log('📊 Guides data:', { guides, loading: guidesLoading, error: guidesError });
 
   // Remove mock data - use only real guides from database
   const mockGuides = [
@@ -73,9 +76,15 @@ const Guides = () => {
   // Use real guides from database, with fallback to mock data if API fails
   const displayGuides = (() => {
     if (guidesLoading) return [];
-    if (guides && guides.length > 0) return guides;
-    if (guidesError) return mockGuides;
-    return [];
+    if (guides && guides.length > 0) {
+      console.log('✅ Using real guides from database:', guides.length);
+      return guides;
+    }
+    if (guidesError) {
+      console.log('⚠️ API error, using mock guides:', guidesError);
+      return mockGuides;
+    }
+    return mockGuides; // Default to mock guides if no data
   })();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -204,7 +213,7 @@ const Guides = () => {
         )}
 
         {/* Error State - show warning but display mock guides */}
-        {guidesError && (
+        {guidesError && displayGuides === mockGuides && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="text-yellow-800 text-sm">
               <strong>Demo Mode:</strong> Showing sample guides. Backend connection issue: {guidesError}
@@ -216,6 +225,15 @@ const Guides = () => {
               >
                 Retry Connection
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Success State - show when real guides are loaded */}
+        {!guidesError && guides && guides.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="text-green-800 text-sm">
+              <strong>Live Data:</strong> Showing {guides.length} real guide(s) from database
             </div>
           </div>
         )}
