@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -12,30 +12,25 @@ import {
   DollarSign, 
   Video, 
   MessageCircle, 
-  Filter,
   Search,
-  Calendar,
   Globe,
   Award,
   Users
 } from "lucide-react";
-import apiService from "../services/api";
-import { useApiData } from "../hooks/useApi";
+// Temporarily disabled API imports due to backend issues
+// import apiService from "../services/api";
+// import { useApiData } from "../hooks/useApi";
 
 const Guides = () => {
   const navigate = useNavigate();
   
-  // Fetch real guide data from database
-  const { data: guides = [], loading: guidesLoading, error: guidesError } = useApiData(
-    () => {
-      console.log('🔍 Fetching guides from API...');
-      return apiService.searchGuides();
-    },
-    []
-  );
+  // Temporarily disable API call due to CORS/backend issues - show mock guides
+  const guides = [];
+  const guidesLoading = false;
+  const guidesError = "Backend temporarily unavailable - showing demo guides";
 
   // Debug logging
-  console.log('📊 Guides data:', { guides, loading: guidesLoading, error: guidesError });
+  console.log('📊 Using mock guides due to backend issues');
 
   // Remove mock data - use only real guides from database
   const mockGuides = [
