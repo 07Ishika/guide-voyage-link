@@ -75,8 +75,8 @@ const Guides = () => {
     }
   ];
 
-  // Use only real guides from database, with fallback to empty array
-  const displayGuides = guides || [];
+  // Use real guides from database, with fallback to mock data if API fails
+  const displayGuides = (guides && guides.length > 0) ? guides : (guidesError ? mockGuides : []);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("All");
@@ -203,8 +203,16 @@ const Guides = () => {
           </div>
         )}
 
-        {/* Error State */}
-        {guidesError && (
+        {/* Error State - but still show mock guides */}
+        {guidesError && displayGuides.length > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="text-yellow-800 text-sm">
+              <strong>Note:</strong> Showing demo guides. API connection issue: {guidesError}
+            </div>
+          </div>
+        )}
+        
+        {guidesError && displayGuides.length === 0 && (
           <div className="text-center py-12">
             <div className="text-red-500 mb-4">Error loading guides: {guidesError}</div>
             <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
